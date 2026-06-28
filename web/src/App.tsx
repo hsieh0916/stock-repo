@@ -18,11 +18,15 @@ const StockDetail = lazy(() =>
 const ETF_DATASETS: Record<string, string> = {
   '00991A': 'dataset.json',
   '00981A': 'dataset_00981A.json',
+  '00982A': 'dataset_00982A.json',
+  '00980A': 'dataset_00980A.json',
 }
 
 const ETF_SOURCES: Record<string, string> = {
   '00991A': '復華投信官網每日持股揭露（00991A）',
   '00981A': '統一投信 ezmoney.com.tw 每日持股揭露（00981A）',
+  '00982A': '群益投信官網每日持股揭露（00982A）',
+  '00980A': '野村投信官網每日持股揭露（00980A）',
 }
 
 function useDark(): [boolean, () => void] {

@@ -3,6 +3,8 @@ import type { Dataset } from '../data/types'
 const ETF_INFO: Record<string, string> = {
   '00991A': '復華台灣未來50',
   '00981A': '主動統一台股增長',
+  '00982A': '主動群益台灣強棒',
+  '00980A': '主動野村臺灣優選',
 }
 
 interface Props {
