@@ -11,10 +11,8 @@ import type { Dataset } from '../data/types'
 import { diffRows, type ChangeRow, type ChangeTag } from '../data/analytics'
 import { Badge } from './Badge'
 import {
-  fmtInt,
   fmtLots,
   fmtPct,
-  fmtSigned,
   fmtSignedLots,
   fmtSignedPct,
   upDown,
