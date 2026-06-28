@@ -1,0 +1,16 @@
+# node
+web/node_modules/
+web/dist/
+web/.vite/
+
+# python
+__pycache__/
+*.pyc
+
+# os
+.DS_Store
+
+# dry-run alert preview (regenerated each run)
+data/public/last_alert.html
+
+# keep data snapshots & dataset.json in the repo (small, version-tracked history)

@@ -1,0 +1,11 @@
+{
+  "_comment": "全域關注/推播設定。mode=all 監控所有持股；mode=watch 只監控 codes。門檻為單日 |Δ股數|。",
+  "threshold_shares": 10000,
+  "mode": "all",
+  "codes": ["2330", "2327", "2383"],
+  "send_when_empty": false,
+  "subject_prefix": "【00991A 持股異動】",
+  "from": "00991A Alerts <alerts@example.com>",
+  "recipients": ["you@example.com"],
+  "provider": "resend"
+}

@@ -1,0 +1,88 @@
+name: daily-update
+
+# 每個交易日台股揭露後更新資料、發推播、重佈署靜態站。
+# 10:30 UTC = 18:30 台北時間（週一~週五）。可依實際揭露時間調整。
+on:
+  schedule:
+    - cron: '30 10 * * 1-5'
+  workflow_dispatch: {}
+  push:
+    branches: [main]   # 程式碼更新即重佈署（bot 的資料 commit 帶 [skip ci] 不會觸發）
+
+permissions:
+  contents: write   # commit 更新後的 dataset/snapshots
+  pages: write
+  id-token: write
+
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      fetch_failed: ${{ steps.pipeline.outputs.fetch_failed }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Fetch + rebuild dataset + notify
+        id: pipeline
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+        run: python pipeline/daily.py
+
+      - name: Commit updated data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/ web/public/dataset.json web/public/sectors.json
+          if git diff --cached --quiet; then
+            echo "no data changes"
+          else
+            git commit -m "data: daily update [skip ci]"
+            git push
+          fi
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build site
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Fails the run (→ GitHub emails the repo owner) if fetch failed, but only
+  # AFTER a successful deploy so alerting never blocks publishing fresh data.
+  alert:
+    needs: [build, deploy]
+    if: ${{ needs.build.outputs.fetch_failed == '1' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "::error::Daily fetch from FH Trust failed — investigate the endpoint."
+          exit 1

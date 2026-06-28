@@ -1,0 +1,184 @@
+import { useMemo } from 'react'
+import { Chart } from './Chart'
+import type { Dataset } from '../data/types'
+import { stockSeries, stockSummary } from '../data/analytics'
+import { fmtInt, fmtLots, fmtPct, fmtSignedLots, upDown } from '../lib/format'
+
+interface Props {
+  ds: Dataset
+  code: string
+  dark: boolean
+  isWatched: (c: string) => boolean
+  onToggleWatch: (c: string) => void
+  onClose: () => void
+}
+
+export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose }: Props) {
+  const name = ds.securities[code] ?? code
+  const full = useMemo(() => stockSeries(ds, code), [ds, code])
+  const summary = useMemo(() => stockSummary(full), [full])
+
+  // trim leading days before first appearance for cleaner charts
+  const startIdx = summary.firstDate ? full.findIndex((p) => p.date === summary.firstDate) : 0
+  const series = full.slice(Math.max(0, startIdx))
+
+  const axis = dark ? '#9ca3af' : '#6b7280'
+  const split = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
+  const dates = series.map((p) => p.date)
+
+  const lotsOption = {
+    grid: { left: 55, right: 55, top: 34, bottom: 64 },
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['持股(張)', '權重(%)'], textStyle: { color: axis }, top: 4 },
+    xAxis: { type: 'category', data: dates, axisLabel: { color: axis }, axisLine: { lineStyle: { color: split } } },
+    yAxis: [
+      { type: 'value', name: '張', nameTextStyle: { color: axis }, axisLabel: { color: axis }, splitLine: { lineStyle: { color: split } } },
+      { type: 'value', name: '%', position: 'right', nameTextStyle: { color: axis }, axisLabel: { color: axis }, splitLine: { show: false } },
+    ],
+    dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 18 }],
+    series: [
+      { name: '持股(張)', type: 'line', smooth: true, showSymbol: false, data: series.map((p) => Math.round(p.lots)), areaStyle: { opacity: 0.08 }, lineStyle: { color: '#6366f1' }, itemStyle: { color: '#6366f1' } },
+      { name: '權重(%)', type: 'line', yAxisIndex: 1, showSymbol: false, data: series.map((p) => p.weight), lineStyle: { color: '#f59e0b' }, itemStyle: { color: '#f59e0b' } },
+    ],
+  }
+
+  const flowOption = {
+    grid: { left: 55, right: 20, top: 20, bottom: 64 },
+    tooltip: { trigger: 'axis', valueFormatter: (v: number) => fmtSignedLots(v) + ' 張' },
+    xAxis: { type: 'category', data: dates, axisLabel: { color: axis }, axisLine: { lineStyle: { color: split } } },
+    yAxis: { type: 'value', name: '張', nameTextStyle: { color: axis }, axisLabel: { color: axis }, splitLine: { lineStyle: { color: split } } },
+    dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 18 }],
+    series: [
+      {
+        type: 'bar',
+        data: series.map((p) => ({
+          value: Math.round(p.dLots),
+          itemStyle: { color: p.dLots >= 0 ? '#e11d48' : '#059669' },
+        })),
+      },
+    ],
+  }
+
+  const recent = [...series].reverse().slice(0, 20)
+
+  function exportCsv() {
+    const header = ['日期', '股數', '張數', 'Δ股數', 'Δ張數', '權重%', '金額']
+    const lines = series.map((p) => [p.date, p.shares, Math.round(p.lots), p.dShares, p.dLots, p.weight, p.amount].join(','))
+    const csv = '﻿' + [header.join(','), ...lines].join('\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `00991A_${code}_${name}_持股歷史.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="fixed inset-0 z-30 bg-black/40 flex justify-end" onClick={onClose}>
+      <div
+        className="w-full max-w-3xl h-full overflow-y-auto thin-scroll bg-gray-50 dark:bg-gray-950 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* header */}
+        <div className="sticky top-0 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-b border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center gap-3">
+          <button
+            onClick={() => onToggleWatch(code)}
+            className={isWatched(code) ? 'text-amber-400 text-lg' : 'text-gray-300 dark:text-gray-600 hover:text-amber-400 text-lg'}
+            title="加入/移除關注"
+          >
+            ★
+          </button>
+          <span className="font-mono text-sm text-gray-500">{code}</span>
+          <span className="text-lg font-bold">{name}</span>
+          <a
+            href={`https://goodinfo.tw/tw/StockDetail.asp?STOCK_ID=${code}`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+          >
+            Goodinfo ↗
+          </a>
+          <button onClick={onClose} className="ml-auto rounded-md px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800">✕</button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {/* stat strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+            <Stat label="目前持股" value={`${fmtLots(summary.currentLots)} 張`} sub={`${fmtInt(summary.currentShares)} 股`} />
+            <Stat label="目前權重" value={fmtPct(summary.currentWeight)} />
+            <Stat label="持有天數" value={`${summary.heldDays} 天`} sub={summary.everExited ? '曾出清再買回' : undefined} />
+            <Stat
+              label="連續變動"
+              value={summary.streak === 0 ? '—' : `${Math.abs(summary.streak)} 天 ${summary.streak > 0 ? '增持' : '減持'}`}
+              valueCls={upDown(summary.streak)}
+            />
+            <Stat label="首次進場" value={summary.firstDate ?? '—'} />
+            <Stat label="最大單日變動" value={`${fmtSignedLots(summary.maxDayLots)} 張`} valueCls={upDown(summary.maxDayLots)} />
+          </div>
+
+          <Panel title="持股張數走勢 ＆ 權重">
+            <Chart option={lotsOption} style={{ height: 280 }} notMerge />
+          </Panel>
+
+          <Panel title="每日買賣超（張）">
+            <Chart option={flowOption} style={{ height: 220 }} notMerge />
+          </Panel>
+
+          <Panel
+            title="逐日明細（近 20 日）"
+            action={
+              <button onClick={exportCsv} className="rounded-md bg-emerald-600 text-white px-2 py-0.5 text-xs hover:bg-emerald-700">
+                匯出全期 CSV
+              </button>
+            }
+          >
+            <div className="overflow-x-auto thin-scroll">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                    <th className="px-2 py-1.5 font-medium">日期</th>
+                    <th className="px-2 py-1.5 font-medium text-right">張數</th>
+                    <th className="px-2 py-1.5 font-medium text-right">Δ張數</th>
+                    <th className="px-2 py-1.5 font-medium text-right">權重</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recent.map((p) => (
+                    <tr key={p.date} className="border-b border-gray-50 dark:border-gray-800/60">
+                      <td className="px-2 py-1 font-mono text-xs">{p.date}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{fmtLots(p.lots)}</td>
+                      <td className={`px-2 py-1 text-right tabular-nums ${upDown(p.dLots)}`}>{p.dLots === 0 ? '—' : fmtSignedLots(p.dLots)}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{fmtPct(p.weight)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Stat({ label, value, sub, valueCls }: { label: string; value: React.ReactNode; sub?: string; valueCls?: string }) {
+  return (
+    <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-2">
+      <div className="text-xs text-gray-500 dark:text-gray-400">{label}</div>
+      <div className={`font-semibold tabular-nums ${valueCls ?? ''}`}>{value}</div>
+      {sub && <div className="text-xs text-gray-400">{sub}</div>}
+    </div>
+  )
+}
+
+function Panel({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3">
+      <div className="flex items-center mb-2">
+        <div className="text-sm font-medium">{title}</div>
+        {action && <div className="ml-auto">{action}</div>}
+      </div>
+      {children}
+    </div>
+  )
+}
