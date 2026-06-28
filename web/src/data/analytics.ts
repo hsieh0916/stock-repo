@@ -20,6 +20,7 @@ export interface ChangeRow {
   weight: number // compare-date weight (%)
   prevWeight: number
   dWeight: number
+  price: number // estimated NT$/share (amount/shares; uses prev-day for exits)
   tag: ChangeTag
 }
 
@@ -63,6 +64,7 @@ export function diffRows(
     const weight = c?.weight ?? 0
     const prevWeight = b?.weight ?? 0
     const amount = c?.amount ?? 0
+    const price = shares > 0 ? amount / shares : (prevShares > 0 ? (b?.amount ?? 0) / prevShares : 0)
     let tag: ChangeTag
     if (!b && c) tag = 'new'
     else if (b && !c) tag = 'exit'
@@ -81,6 +83,7 @@ export function diffRows(
       weight,
       prevWeight,
       dWeight: weight - prevWeight,
+      price,
       tag,
     })
   }
