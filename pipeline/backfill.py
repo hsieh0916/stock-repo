@@ -1,38 +1,40 @@
 """
-Backfill all available daily snapshots for 00991A and build the frontend dataset.
+Backfill snapshots for all tracked ETFs and build the frontend datasets.
 
-Iterates weekdays from inception to today, fetches each trading day's xlsx,
-saves a normalized per-date snapshot, then assembles a single dataset.json
-(fund time-series + per-date holdings) for the static frontend.
+00991A (復華台灣未來50):  historical backfill via fhtrust.com.tw (date parameter)
+00981A (主動統一台股增長): today-only fetch via ezmoney.com.tw (no history endpoint)
 """
 
-import os
-import json
-import time
 import datetime
+import json
+import os
+import time
 import urllib.error
 
 import fhetf
+import upamc_etf
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 SNAP_DIR = os.path.join(ROOT, "data", "snapshots")
+SNAP_DIR_00981A = os.path.join(ROOT, "data", "snapshots", "00981A")
 PUB_DIR = os.path.join(ROOT, "data", "public")
-WEB_PUB_DIR = os.path.join(ROOT, "web", "public")  # frontend reads dataset.json from here
+WEB_PUB_DIR = os.path.join(ROOT, "web", "public")
 
-START = datetime.date(2025, 12, 8)          # inception ~2025-12-09
-END = datetime.date.today()                 # incremental: fetch up to today (skips cached days)
+START = datetime.date(2025, 12, 8)   # 00991A inception ~2025-12-09
+END = datetime.date.today()
 
 
 def daterange(a, b):
     d = a
     while d <= b:
-        if d.weekday() < 5:                  # skip Sat/Sun
+        if d.weekday() < 5:
             yield d
         d += datetime.timedelta(days=1)
 
 
 def backfill():
+    """Fetch any missing 00991A trading days up to today. Returns error count."""
     os.makedirs(SNAP_DIR, exist_ok=True)
     os.makedirs(PUB_DIR, exist_ok=True)
     got, empty, errs = 0, 0, 0
@@ -47,7 +49,7 @@ def backfill():
         except (urllib.error.URLError, TimeoutError, OSError) as e:
             time.sleep(1.0)
             try:
-                snap = fhetf.fetch_parse(ymd)        # one retry
+                snap = fhetf.fetch_parse(ymd)
             except Exception as e2:
                 print(f"  ERR {d}: {e2}")
                 errs += 1
@@ -58,20 +60,53 @@ def backfill():
             with open(out_path, "w", encoding="utf-8") as f:
                 json.dump(snap, f, ensure_ascii=False)
             got += 1
-        time.sleep(0.2)                              # be polite to the server
-    print(f"backfill done: {got} trading days saved, {empty} non-trading skipped, {errs} errors")
+        time.sleep(0.2)
+    print(f"00991A backfill: {got} days saved, {empty} non-trading skipped, {errs} errors")
     return errs
 
 
-def build_dataset():
+def backfill_00981a():
+    """Fetch the latest 00981A snapshot (UPAMC always returns last trading day; no history endpoint)."""
+    os.makedirs(SNAP_DIR_00981A, exist_ok=True)
+    try:
+        snap = upamc_etf.fetch_parse()
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        time.sleep(1.0)
+        try:
+            snap = upamc_etf.fetch_parse()
+        except Exception as e2:
+            print(f"  00981A ERR: {e2}")
+            return 1
+    if snap is None:
+        print("00981A backfill: no xlsx returned (server may be down)")
+        return 0
+    date = snap.get("date")
+    if not date:
+        print("00981A backfill: could not parse date from response")
+        return 1
+    out_path = os.path.join(SNAP_DIR_00981A, f"{date}.json")
+    if os.path.exists(out_path):
+        print(f"00981A backfill: {date} already cached")
+        return 0
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(snap, f, ensure_ascii=False)
+    print(f"00981A backfill: saved {date} ({snap['n_holdings']} holdings)")
+    return 0
+
+
+def _build_one_dataset(snap_dir, fund_code, fund_name, out_filename):
     snaps = {}
-    for fn in sorted(os.listdir(SNAP_DIR)):
+    for fn in sorted(os.listdir(snap_dir)):
         if not fn.endswith(".json"):
             continue
-        with open(os.path.join(SNAP_DIR, fn), encoding="utf-8") as f:
+        with open(os.path.join(snap_dir, fn), encoding="utf-8") as f:
             s = json.load(f)
         if s and s.get("date"):
             snaps[s["date"]] = s
+
+    if not snaps:
+        print(f"{fund_code}: no snapshots found, skipping dataset build")
+        return None
 
     dates = sorted(snaps)
     securities = {}
@@ -95,7 +130,7 @@ def build_dataset():
         holdings_by_date[dt] = rows
 
     dataset = {
-        "fund": {"code": "00991A", "name": "復華台灣未來50主動式ETF"},
+        "fund": {"code": fund_code, "name": fund_name},
         "generated_dates": {"first": dates[0], "last": dates[-1], "count": len(dates)},
         "columns": ["code", "shares", "amount", "weight"],
         "securities": securities,
@@ -103,17 +138,30 @@ def build_dataset():
         "holdings_by_date": holdings_by_date,
     }
     payload = json.dumps(dataset, ensure_ascii=False, separators=(",", ":"))
-    out = os.path.join(PUB_DIR, "dataset.json")
+    out = os.path.join(PUB_DIR, out_filename)
     with open(out, "w", encoding="utf-8") as f:
         f.write(payload)
-    # also write directly into the frontend so the daily job updates the site in one step
     if os.path.isdir(WEB_PUB_DIR):
-        with open(os.path.join(WEB_PUB_DIR, "dataset.json"), "w", encoding="utf-8") as f:
+        with open(os.path.join(WEB_PUB_DIR, out_filename), "w", encoding="utf-8") as f:
             f.write(payload)
-    print(f"dataset.json: {len(dates)} days, {len(securities)} unique securities, {len(payload)/1024:.0f} KB")
-    return dataset, snaps, dates
+    print(f"{fund_code} {out_filename}: {len(dates)} days, {len(securities)} securities, {len(payload)/1024:.0f} KB")
+    return dataset
+
+
+def build_dataset():
+    return _build_one_dataset(
+        SNAP_DIR, "00991A", "復華台灣未來50主動式ETF", "dataset.json"
+    )
+
+
+def build_dataset_00981a():
+    return _build_one_dataset(
+        SNAP_DIR_00981A, "00981A", "主動統一台股增長ETF", "dataset_00981A.json"
+    )
 
 
 if __name__ == "__main__":
     backfill()
     build_dataset()
+    backfill_00981a()
+    build_dataset_00981a()

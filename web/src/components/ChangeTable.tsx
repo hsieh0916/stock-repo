@@ -150,7 +150,7 @@ export function ChangeTable({ ds, baseDate, compareDate, onSelect, isWatched, on
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
     const a = document.createElement('a')
     a.href = url
-    a.download = `00991A_持股變化_${baseDate}_${compareDate}.csv`
+    a.download = `${ds.fund.code}_持股變化_${baseDate}_${compareDate}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }

@@ -6,11 +6,12 @@ type State =
   | { status: 'error'; error: string }
   | { status: 'ready'; data: Dataset }
 
-export function useDataset(): State {
+export function useDataset(url: string): State {
   const [state, setState] = useState<State>({ status: 'loading' })
   useEffect(() => {
     let alive = true
-    fetch(`${import.meta.env.BASE_URL}dataset.json`)
+    setState({ status: 'loading' })
+    fetch(url)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()
@@ -20,6 +21,6 @@ export function useDataset(): State {
     return () => {
       alive = false
     }
-  }, [])
+  }, [url])
   return state
 }

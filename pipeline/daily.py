@@ -17,10 +17,12 @@ import sectors
 
 def main():
     dry = "--dry-run" in sys.argv
-    errs = backfill.backfill()  # fetch any missing trading days up to today
-    backfill.build_dataset()    # rebuild dataset.json (+ web/public)
+    errs = backfill.backfill()       # fetch any missing 00991A trading days
+    backfill.build_dataset()         # rebuild dataset.json (+ web/public)
+    errs += backfill.backfill_00981a()      # fetch today's 00981A (no history endpoint)
+    backfill.build_dataset_00981a()  # rebuild dataset_00981A.json
     try:
-        sectors.build()         # refresh industry map (non-fatal if source down)
+        sectors.build()              # refresh industry map (non-fatal if source down)
     except Exception as e:
         print("daily: sectors refresh skipped:", e)
     notify.run(dry_run=dry)
@@ -28,7 +30,7 @@ def main():
     # health signal for CI (does NOT block deploy; a post-deploy job alerts on it)
     failed = errs > 0
     if failed:
-        print(f"::error::FH Trust fetch failed for {errs} day(s); served data may be stale")
+        print(f"::error::ETF fetch failed for {errs} error(s); served data may be stale")
     else:
         print("daily: fetch healthy")
     gh_out = os.environ.get("GITHUB_OUTPUT")
