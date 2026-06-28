@@ -28,10 +28,36 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
 
   const prices = series.map((p) => (p.shares > 0 ? +(p.amount / p.shares).toFixed(2) : null))
 
+  // average cost basis: resets on exit, increases on buy (weighted avg), unchanged on sell
+  const costBasis = useMemo(() => {
+    const out: (number | null)[] = []
+    let cost = 0
+    let prevShares = 0
+    for (const p of series) {
+      if (p.shares === 0) {
+        cost = 0; prevShares = 0; out.push(null)
+      } else {
+        const px = p.amount / p.shares
+        if (prevShares === 0) {
+          cost = px
+        } else if (p.shares > prevShares) {
+          cost = (prevShares * cost + (p.shares - prevShares) * px) / p.shares
+        }
+        out.push(+cost.toFixed(2))
+        prevShares = p.shares
+      }
+    }
+    return out
+  }, [series])
+
+  const lastPrice = prices[prices.length - 1]
+  const lastCost = costBasis[costBasis.length - 1]
+  const unrealizedPct = lastPrice && lastCost && lastCost > 0 ? (lastPrice - lastCost) / lastCost * 100 : null
+
   const lotsOption = {
     grid: { left: 55, right: 110, top: 34, bottom: 64 },
     tooltip: { trigger: 'axis' },
-    legend: { data: ['持股(張)', '權重(%)', '股價(元)'], textStyle: { color: axis }, top: 4 },
+    legend: { data: ['持股(張)', '權重(%)', '股價(元)', '持有成本(元)'], textStyle: { color: axis }, top: 4 },
     xAxis: { type: 'category', data: dates, axisLabel: { color: axis }, axisLine: { lineStyle: { color: split } } },
     yAxis: [
       { type: 'value', name: '張', nameTextStyle: { color: axis }, axisLabel: { color: axis }, splitLine: { lineStyle: { color: split } } },
@@ -43,6 +69,7 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
       { name: '持股(張)', type: 'line', smooth: true, showSymbol: false, data: series.map((p) => Math.round(p.lots)), areaStyle: { opacity: 0.08 }, lineStyle: { color: '#6366f1' }, itemStyle: { color: '#6366f1' } },
       { name: '權重(%)', type: 'line', yAxisIndex: 1, showSymbol: false, data: series.map((p) => p.weight), lineStyle: { color: '#f59e0b' }, itemStyle: { color: '#f59e0b' } },
       { name: '股價(元)', type: 'line', yAxisIndex: 2, showSymbol: false, data: prices, lineStyle: { color: '#10b981', width: 1.5 }, itemStyle: { color: '#10b981' } },
+      { name: '持有成本(元)', type: 'line', yAxisIndex: 2, showSymbol: false, data: costBasis, lineStyle: { color: '#f97316', width: 1.5, type: 'dashed' }, itemStyle: { color: '#f97316' } },
     ],
   }
 
@@ -66,8 +93,8 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
   const recent = [...series].reverse().slice(0, 20)
 
   function exportCsv() {
-    const header = ['日期', '股數', '張數', 'Δ股數', 'Δ張數', '權重%', '金額', '每股金額(元)']
-    const lines = series.map((p, i) => [p.date, p.shares, Math.round(p.lots), p.dShares, p.dLots, p.weight, p.amount, prices[i] ?? ''].join(','))
+    const header = ['日期', '股數', '張數', 'Δ股數', 'Δ張數', '權重%', '金額', '每股金額(元)', '持有成本(元)']
+    const lines = series.map((p, i) => [p.date, p.shares, Math.round(p.lots), p.dShares, p.dLots, p.weight, p.amount, prices[i] ?? '', costBasis[i] ?? ''].join(','))
     const csv = '﻿' + [header.join(','), ...lines].join('\n')
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
     const a = document.createElement('a')
@@ -118,6 +145,12 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
             />
             <Stat label="首次進場" value={summary.firstDate ?? '—'} />
             <Stat label="最大單日變動" value={`${fmtSignedLots(summary.maxDayLots)} 張`} valueCls={upDown(summary.maxDayLots)} />
+            <Stat label="持有成本" value={lastCost ? `${lastCost.toLocaleString()} 元` : '—'} />
+            <Stat
+              label="含報酬"
+              value={unrealizedPct != null ? `${unrealizedPct > 0 ? '+' : ''}${unrealizedPct.toFixed(2)}%` : '—'}
+              valueCls={unrealizedPct != null ? upDown(unrealizedPct) : undefined}
+            />
           </div>
 
           <Panel title="持股張數走勢 ＆ 權重 ＆ 股價">
