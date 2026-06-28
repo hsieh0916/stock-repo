@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Chart } from './Chart'
 import type { Dataset } from '../data/types'
 import { stockSeries, stockSummary } from '../data/analytics'
+import { usePrices } from '../data/usePrices'
 import { fmtInt, fmtLots, fmtPct, fmtSignedLots, upDown } from '../lib/format'
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 
 export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose }: Props) {
   const name = ds.securities[code] ?? code
+  const marketPrices = usePrices()
   const full = useMemo(() => stockSeries(ds, code), [ds, code])
   const summary = useMemo(() => stockSummary(full), [full])
 
@@ -50,9 +52,11 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
     return out
   }, [series])
 
-  const lastPrice = prices[prices.length - 1]
+  const estimatedPrice = prices[prices.length - 1]           // amount/shares from PCF
+  const twsePrice = marketPrices[code] ?? null               // TWSE/TPEX actual close
+  const currentPrice = twsePrice ?? estimatedPrice           // prefer actual
   const lastCost = costBasis[costBasis.length - 1]
-  const unrealizedPct = lastPrice && lastCost && lastCost > 0 ? (lastPrice - lastCost) / lastCost * 100 : null
+  const unrealizedPct = currentPrice && lastCost && lastCost > 0 ? (currentPrice - lastCost) / lastCost * 100 : null
 
   const lotsOption = {
     grid: { left: 55, right: 110, top: 34, bottom: 64 },
@@ -145,6 +149,10 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
             />
             <Stat label="首次進場" value={summary.firstDate ?? '—'} />
             <Stat label="最大單日變動" value={`${fmtSignedLots(summary.maxDayLots)} 張`} valueCls={upDown(summary.maxDayLots)} />
+            <Stat
+              label={twsePrice ? '目前股價 (TWSE)' : '目前股價 (估)'}
+              value={currentPrice ? `${currentPrice.toLocaleString()} 元` : '—'}
+            />
             <Stat label="持有成本" value={lastCost ? `${lastCost.toLocaleString()} 元` : '—'} />
             <Stat
               label="含報酬"

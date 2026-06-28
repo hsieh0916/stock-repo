@@ -12,6 +12,7 @@ import sys
 
 import backfill
 import notify
+import prices
 import sectors
 
 
@@ -39,6 +40,10 @@ def main():
         sectors.build()
     except Exception as e:
         print("daily: sectors refresh skipped:", e)
+    try:
+        prices.build()
+    except Exception as e:
+        print(f"daily: prices fetch skipped: {e}")
     try:
         notify.run(dry_run=dry)
     except Exception as e:
