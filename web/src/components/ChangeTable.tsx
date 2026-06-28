@@ -53,15 +53,21 @@ export function ChangeTable({ ds, baseDate, compareDate, onSelect, isWatched, on
     [ds, baseDate, compareDate],
   )
 
+  const weightAllMode = metric === 'weight' && mode === 'all'
+
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
     return allRows.filter((r) => {
-      if (Math.abs(r.dShares) < threshold) return false
+      if (weightAllMode) {
+        if (r.shares <= 10000) return false
+      } else {
+        if (Math.abs(r.dShares) < threshold) return false
+      }
       if (mode !== 'all' && r.tag !== mode) return false
       if (q && !(r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q))) return false
       return true
     })
-  }, [allRows, threshold, mode, query])
+  }, [allRows, threshold, mode, metric, query, weightAllMode])
 
   const columns = useMemo(
     () => [
@@ -167,21 +173,25 @@ export function ChangeTable({ ds, baseDate, compareDate, onSelect, isWatched, on
           ))}
         </div>
 
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">門檻 |Δ股數| ≥</span>
-          <input
-            type="range"
-            min={0}
-            max={200000}
-            step={1000}
-            value={threshold}
-            onChange={(e) => setThreshold(Number(e.target.value))}
-            className="w-32 sm:w-40 accent-indigo-600"
-          />
-          <span className="tabular-nums w-28">
-            {fmtInt(threshold)} 股（{(threshold / 1000).toLocaleString()} 張）
-          </span>
-        </div>
+        {weightAllMode ? (
+          <span className="text-sm text-gray-500 dark:text-gray-400">顯示持股 &gt; 10 張的所有持股</span>
+        ) : (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">門檻 |Δ股數| ≥</span>
+            <input
+              type="range"
+              min={0}
+              max={200000}
+              step={1000}
+              value={threshold}
+              onChange={(e) => setThreshold(Number(e.target.value))}
+              className="w-32 sm:w-40 accent-indigo-600"
+            />
+            <span className="tabular-nums w-28">
+              {fmtInt(threshold)} 股（{(threshold / 1000).toLocaleString()} 張）
+            </span>
+          </div>
+        )}
 
         <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-700 overflow-hidden text-sm">
           {MODES.map((m) => (
