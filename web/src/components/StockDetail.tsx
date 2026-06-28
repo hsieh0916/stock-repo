@@ -26,19 +26,23 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
   const split = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
   const dates = series.map((p) => p.date)
 
+  const prices = series.map((p) => (p.shares > 0 ? +(p.amount / p.shares).toFixed(2) : null))
+
   const lotsOption = {
-    grid: { left: 55, right: 55, top: 34, bottom: 64 },
+    grid: { left: 55, right: 110, top: 34, bottom: 64 },
     tooltip: { trigger: 'axis' },
-    legend: { data: ['持股(張)', '權重(%)'], textStyle: { color: axis }, top: 4 },
+    legend: { data: ['持股(張)', '權重(%)', '股價(元)'], textStyle: { color: axis }, top: 4 },
     xAxis: { type: 'category', data: dates, axisLabel: { color: axis }, axisLine: { lineStyle: { color: split } } },
     yAxis: [
       { type: 'value', name: '張', nameTextStyle: { color: axis }, axisLabel: { color: axis }, splitLine: { lineStyle: { color: split } } },
       { type: 'value', name: '%', position: 'right', nameTextStyle: { color: axis }, axisLabel: { color: axis }, splitLine: { show: false } },
+      { type: 'value', name: '元', position: 'right', offset: 55, nameTextStyle: { color: axis }, axisLabel: { color: axis, formatter: (v: number) => v >= 1000 ? (v / 1000).toFixed(1) + 'K' : String(v) }, splitLine: { show: false } },
     ],
     dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 18 }],
     series: [
       { name: '持股(張)', type: 'line', smooth: true, showSymbol: false, data: series.map((p) => Math.round(p.lots)), areaStyle: { opacity: 0.08 }, lineStyle: { color: '#6366f1' }, itemStyle: { color: '#6366f1' } },
       { name: '權重(%)', type: 'line', yAxisIndex: 1, showSymbol: false, data: series.map((p) => p.weight), lineStyle: { color: '#f59e0b' }, itemStyle: { color: '#f59e0b' } },
+      { name: '股價(元)', type: 'line', yAxisIndex: 2, showSymbol: false, data: prices, lineStyle: { color: '#10b981', width: 1.5 }, itemStyle: { color: '#10b981' } },
     ],
   }
 
@@ -62,8 +66,8 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
   const recent = [...series].reverse().slice(0, 20)
 
   function exportCsv() {
-    const header = ['日期', '股數', '張數', 'Δ股數', 'Δ張數', '權重%', '金額']
-    const lines = series.map((p) => [p.date, p.shares, Math.round(p.lots), p.dShares, p.dLots, p.weight, p.amount].join(','))
+    const header = ['日期', '股數', '張數', 'Δ股數', 'Δ張數', '權重%', '金額', '每股金額(元)']
+    const lines = series.map((p, i) => [p.date, p.shares, Math.round(p.lots), p.dShares, p.dLots, p.weight, p.amount, prices[i] ?? ''].join(','))
     const csv = '﻿' + [header.join(','), ...lines].join('\n')
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
     const a = document.createElement('a')
@@ -116,7 +120,7 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
             <Stat label="最大單日變動" value={`${fmtSignedLots(summary.maxDayLots)} 張`} valueCls={upDown(summary.maxDayLots)} />
           </div>
 
-          <Panel title="持股張數走勢 ＆ 權重">
+          <Panel title="持股張數走勢 ＆ 權重 ＆ 股價">
             <Chart option={lotsOption} style={{ height: 280 }} notMerge />
           </Panel>
 
