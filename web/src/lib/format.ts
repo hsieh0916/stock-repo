@@ -17,6 +17,9 @@ export const fmtSignedPct = (n: number, d = 2) =>
 export const fmtYi = (n: number) =>
   (n / 1e8).toLocaleString('en-US', { maximumFractionDigits: 1 }) + ' 億'
 
+export const fmtSignedYi = (n: number) =>
+  (n > 0 ? '+' : '') + (n / 1e8).toLocaleString('en-US', { maximumFractionDigits: 1 }) + ' 億'
+
 /** Taiwan convention: up = red, down = green. */
 export const upDown = (n: number) =>
   n > 0

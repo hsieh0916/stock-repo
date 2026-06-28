@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import type { Dataset } from '../data/types'
 import { dashboard } from '../data/analytics'
-import { fmtInt, fmtPct, fmtSignedLots, fmtYi, upDown } from '../lib/format'
+import { fmtInt, fmtPct, fmtSignedYi, fmtYi, upDown } from '../lib/format'
 
 function Card({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
   return (
@@ -35,8 +35,8 @@ export function DashboardCards({ ds, baseDate, compareDate, onSelect }: Props) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <MoverList title="當日買超 Top 5（張）" rows={d.topBuys} onSelect={onSelect} ds={ds} />
-        <MoverList title="當日賣超 Top 5（張）" rows={d.topSells} onSelect={onSelect} ds={ds} />
+        <MoverList title="當日買超 Top 5（金額）" rows={d.topBuys} onSelect={onSelect} ds={ds} />
+        <MoverList title="當日賣超 Top 5（金額）" rows={d.topSells} onSelect={onSelect} ds={ds} />
       </div>
     </div>
   )
@@ -68,7 +68,7 @@ function MoverList({
               >
                 <span className="font-mono text-xs text-gray-500 w-12 text-left">{r.code}</span>
                 <span className="truncate text-left flex-1">{ds.securities[r.code]}</span>
-                <span className={`tabular-nums ${upDown(r.dShares)}`}>{fmtSignedLots(r.dLots)} 張</span>
+                <span className={`tabular-nums ${upDown(r.dAmount)}`}>{fmtSignedYi(r.dAmount)}</span>
               </button>
             </li>
           ))}

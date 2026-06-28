@@ -119,8 +119,8 @@ export function dashboard(
   const weights = cur.map((r) => r[3]).sort((a, b) => b - a)
   const top10Weight = weights.slice(0, 10).reduce((s, w) => s + w, 0)
   const hhi = weights.reduce((s, w) => s + w * w, 0)
-  const ups = rows.filter((r) => r.dShares > 0).sort((a, b) => b.dShares - a.dShares)
-  const downs = rows.filter((r) => r.dShares < 0).sort((a, b) => a.dShares - b.dShares)
+  const ups = rows.filter((r) => r.dShares > 0).sort((a, b) => b.dAmount - a.dAmount)
+  const downs = rows.filter((r) => r.dShares < 0).sort((a, b) => a.dAmount - b.dAmount)
   return {
     day,
     newCount: rows.filter((r) => r.tag === 'new').length,
