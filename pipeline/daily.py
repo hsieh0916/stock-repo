@@ -17,12 +17,26 @@ import sectors
 
 def main():
     dry = "--dry-run" in sys.argv
-    errs = backfill.backfill()       # fetch any missing 00991A trading days
-    backfill.build_dataset()         # rebuild dataset.json (+ web/public)
-    errs += backfill.backfill_00981a()      # fetch today's 00981A (no history endpoint)
-    backfill.build_dataset_00981a()  # rebuild dataset_00981A.json
     try:
-        sectors.build()              # refresh industry map (non-fatal if source down)
+        errs = backfill.backfill()
+    except Exception as e:
+        print(f"daily: 00991A backfill failed: {e}")
+        errs = 1
+    try:
+        backfill.build_dataset()
+    except Exception as e:
+        print(f"daily: 00991A build_dataset failed: {e}")
+    try:
+        errs += backfill.backfill_00981a()
+    except Exception as e:
+        print(f"daily: 00981A backfill failed: {e}")
+        errs += 1
+    try:
+        backfill.build_dataset_00981a()
+    except Exception as e:
+        print(f"daily: 00981A build_dataset failed: {e}")
+    try:
+        sectors.build()
     except Exception as e:
         print("daily: sectors refresh skipped:", e)
     try:
