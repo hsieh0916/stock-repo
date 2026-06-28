@@ -160,7 +160,7 @@ export function ChangeTable({ ds, baseDate, compareDate, onSelect, isWatched, on
       {/* controls */}
       <div className="flex flex-wrap items-center gap-3 p-3 border-b border-gray-100 dark:border-gray-800">
         <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-700 overflow-hidden text-sm">
-          {(['price', 'weight'] as Metric[]).map((m) => (
+          {(['weight', 'price'] as Metric[]).map((m) => (
             <button
               key={m}
               onClick={() => switchMetric(m)}
