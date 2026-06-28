@@ -77,7 +77,7 @@ def backfill_00981a():
             continue
         try:
             snap = upamc_etf.fetch_parse(d.isoformat())
-        except (urllib.error.URLError, TimeoutError, OSError) as e:
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
             time.sleep(1.0)
             try:
                 snap = upamc_etf.fetch_parse(d.isoformat())

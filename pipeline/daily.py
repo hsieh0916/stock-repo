@@ -25,7 +25,10 @@ def main():
         sectors.build()              # refresh industry map (non-fatal if source down)
     except Exception as e:
         print("daily: sectors refresh skipped:", e)
-    notify.run(dry_run=dry)
+    try:
+        notify.run(dry_run=dry)
+    except Exception as e:
+        print(f"daily: notify skipped: {e}")
 
     # health signal for CI (does NOT block deploy; a post-deploy job alerts on it)
     failed = errs > 0
