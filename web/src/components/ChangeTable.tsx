@@ -12,6 +12,7 @@ import { diffRows, type ChangeRow, type ChangeTag } from '../data/analytics'
 import { Badge } from './Badge'
 import {
   fmtInt,
+  fmtLots,
   fmtPct,
   fmtSigned,
   fmtSignedLots,
@@ -105,13 +106,8 @@ export function ChangeTable({ ds, baseDate, compareDate, onSelect, isWatched, on
         cell: (c) => <span className="tabular-nums">{Math.round(c.getValue()).toLocaleString('en-US')} 元</span>,
       }),
       ch.accessor('shares', {
-        header: '今日股數',
-        cell: (c) => <span className="tabular-nums">{fmtInt(c.getValue())}</span>,
-      }),
-      ch.accessor('dShares', {
-        header: 'Δ股數',
-        sortingFn: (a, b) => Math.abs(a.original.dShares) - Math.abs(b.original.dShares),
-        cell: (c) => <span className={`tabular-nums ${upDown(c.getValue())}`}>{fmtSigned(c.getValue())}</span>,
+        header: '今日張數',
+        cell: (c) => <span className="tabular-nums">{fmtLots(c.getValue() / 1000)}</span>,
       }),
       ch.accessor('dLots', {
         header: 'Δ張數',
@@ -146,11 +142,11 @@ export function ChangeTable({ ds, baseDate, compareDate, onSelect, isWatched, on
   }
 
   function exportCsv() {
-    const header = ['代號', '名稱', '標記', '今日股數', '昨日股數', 'Δ股數', 'Δ張數', '今日權重%', 'Δ權重%', 'Δ金額']
+    const header = ['代號', '名稱', '標記', '今日張數', 'Δ張數', '今日權重%', 'Δ權重%', 'Δ金額']
     const tagText: Record<ChangeTag, string> = { new: '新進', exit: '出清', up: '增持', down: '減持', flat: '持平' }
     const lines = table.getSortedRowModel().rows.map((r) => {
       const d = r.original
-      return [d.code, d.name, tagText[d.tag], d.shares, d.prevShares, d.dShares, d.dLots, d.weight, d.dWeight.toFixed(3), d.dAmount].join(',')
+      return [d.code, d.name, tagText[d.tag], (d.shares / 1000).toFixed(0), d.dLots, d.weight, d.dWeight.toFixed(3), d.dAmount].join(',')
     })
     const csv = '﻿' + [header.join(','), ...lines].join('\n')
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
