@@ -211,6 +211,18 @@ def backfill_00982a():
                     json.dump(snap, f, ensure_ascii=False)
             got += 1
         time.sleep(0.3)
+    # Also fetch latest (no-date) to capture today's same-day PCF (avoids T+1 lag)
+    try:
+        snap = capital_etf.fetch_parse(None)
+        if snap:
+            actual_date = snap.get("date")
+            actual_path = os.path.join(SNAP_DIR_00982A, f"{actual_date}.json")
+            if not os.path.exists(actual_path):
+                with open(actual_path, "w", encoding="utf-8") as f:
+                    json.dump(snap, f, ensure_ascii=False)
+                got += 1
+    except Exception as e:
+        print(f"  00982A latest fetch failed: {e}")
     print(f"00982A backfill: {got} days saved, {empty} non-trading skipped, {errs} errors")
     return errs
 
