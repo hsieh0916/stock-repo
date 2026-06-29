@@ -5,6 +5,8 @@ Backfill snapshots for all tracked ETFs and build the frontend datasets.
 00981A (主動統一台股增長): historical backfill via ezmoney.com.tw
 00982A (主動群益台灣強棒): historical backfill via capitalfund.com.tw
 00980A (主動野村臺灣優選): historical backfill via nomurafunds.com.tw
+00988A (統一全球創新):   historical backfill via ezmoney.com.tw (global fund, T+2 publish)
+00990A (元大全球AI新經濟): historical backfill via yuantaetfs.com
 """
 
 import datetime
@@ -17,6 +19,8 @@ import capital_etf
 import fhetf
 import nomura_etf
 import upamc_etf
+import upamc_global_etf
+import yuanta_etf
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -24,6 +28,8 @@ SNAP_DIR = os.path.join(ROOT, "data", "snapshots")
 SNAP_DIR_00981A = os.path.join(ROOT, "data", "snapshots", "00981A")
 SNAP_DIR_00982A = os.path.join(ROOT, "data", "snapshots", "00982A")
 SNAP_DIR_00980A = os.path.join(ROOT, "data", "snapshots", "00980A")
+SNAP_DIR_00988A = os.path.join(ROOT, "data", "snapshots", "00988A")
+SNAP_DIR_00990A = os.path.join(ROOT, "data", "snapshots", "00990A")
 PUB_DIR = os.path.join(ROOT, "data", "public")
 WEB_PUB_DIR = os.path.join(ROOT, "web", "public")
 
@@ -31,6 +37,8 @@ START = datetime.date(2025, 12, 8)        # 00991A inception ~2025-12-09
 START_00981A = datetime.date(2025, 5, 27)  # 00981A first PCF date (listed 2025-05-15)
 START_00982A = datetime.date(2025, 5, 22)  # 00982A listing date
 START_00980A = datetime.date(2025, 5, 5)   # 00980A listing date
+START_00988A = datetime.date(2025, 11, 1)  # 00988A first PCF ~2025-11-05 (T+2 publish)
+START_00990A = datetime.date(2026, 1, 2)   # 00990A first available date
 END = datetime.date.today()
 
 
@@ -252,6 +260,83 @@ def build_dataset_00980a():
     )
 
 
+def backfill_00988a():
+    """Fetch all missing 00988A days from inception to today. Returns error count.
+
+    PostDate from API = publication date (T+2 trading). Consecutive requested
+    dates may return the same PostDate; the file-exists check skips duplicates.
+    """
+    os.makedirs(SNAP_DIR_00988A, exist_ok=True)
+    got, empty, errs = 0, 0, 0
+    for d in daterange(START_00988A, END):
+        try:
+            snap = upamc_global_etf.fetch_parse(d.isoformat())
+        except Exception as e:
+            time.sleep(1.0)
+            try:
+                snap = upamc_global_etf.fetch_parse(d.isoformat())
+            except Exception as e2:
+                print(f"  00988A ERR {d}: {e2}")
+                errs += 1
+                continue
+        if snap is None:
+            empty += 1
+        else:
+            actual_date = snap.get("date", d.isoformat())
+            actual_path = os.path.join(SNAP_DIR_00988A, f"{actual_date}.json")
+            if not os.path.exists(actual_path):
+                with open(actual_path, "w", encoding="utf-8") as f:
+                    json.dump(snap, f, ensure_ascii=False)
+                got += 1
+            else:
+                got += 1
+        time.sleep(0.3)
+    print(f"00988A backfill: {got} saved/dedup, {empty} non-trading skipped, {errs} errors")
+    return errs
+
+
+def build_dataset_00988a():
+    return _build_one_dataset(
+        SNAP_DIR_00988A, "00988A", "統一全球創新主動式ETF", "dataset_00988A.json"
+    )
+
+
+def backfill_00990a():
+    """Fetch all missing 00990A trading days from inception to today. Returns error count."""
+    os.makedirs(SNAP_DIR_00990A, exist_ok=True)
+    got, empty, errs = 0, 0, 0
+    for d in daterange(START_00990A, END):
+        actual_path = os.path.join(SNAP_DIR_00990A, f"{d.isoformat()}.json")
+        if os.path.exists(actual_path):
+            got += 1
+            continue
+        try:
+            snap = yuanta_etf.fetch_parse(d.isoformat())
+        except Exception as e:
+            time.sleep(1.0)
+            try:
+                snap = yuanta_etf.fetch_parse(d.isoformat())
+            except Exception as e2:
+                print(f"  00990A ERR {d}: {e2}")
+                errs += 1
+                continue
+        if snap is None:
+            empty += 1
+        else:
+            with open(actual_path, "w", encoding="utf-8") as f:
+                json.dump(snap, f, ensure_ascii=False)
+            got += 1
+        time.sleep(0.3)
+    print(f"00990A backfill: {got} days saved, {empty} non-trading skipped, {errs} errors")
+    return errs
+
+
+def build_dataset_00990a():
+    return _build_one_dataset(
+        SNAP_DIR_00990A, "00990A", "元大全球AI新經濟主動式ETF", "dataset_00990A.json"
+    )
+
+
 if __name__ == "__main__":
     backfill()
     build_dataset()
@@ -261,3 +346,7 @@ if __name__ == "__main__":
     build_dataset_00982a()
     backfill_00980a()
     build_dataset_00980a()
+    backfill_00988a()
+    build_dataset_00988a()
+    backfill_00990a()
+    build_dataset_00990a()
