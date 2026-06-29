@@ -28,7 +28,7 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
   const split = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
   const dates = series.map((p) => p.date)
 
-  const prices = series.map((p) => (p.shares > 0 ? +(p.amount / p.shares).toFixed(2) : null))
+  const prices = series.map((p) => (p.shares > 0 ? p.amount : null))
 
   // average cost basis: resets on exit, increases on buy (weighted avg), unchanged on sell
   const costBasis = useMemo(() => {
@@ -39,7 +39,7 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
       if (p.shares === 0) {
         cost = 0; prevShares = 0; out.push(null)
       } else {
-        const px = p.amount / p.shares
+        const px = p.amount
         if (prevShares === 0) {
           cost = px
         } else if (p.shares > prevShares) {
@@ -97,8 +97,8 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
   const recent = [...series].reverse().slice(0, 20)
 
   function exportCsv() {
-    const header = ['日期', '股數', '張數', 'Δ股數', 'Δ張數', '權重%', '金額', '每股金額(元)', '持有成本(元)']
-    const lines = series.map((p, i) => [p.date, p.shares, Math.round(p.lots), p.dShares, p.dLots, p.weight, p.amount, prices[i] ?? '', costBasis[i] ?? ''].join(','))
+    const header = ['日期', '股數', '張數', 'Δ股數', 'Δ張數', '權重%', '每股金額(元)', '持有成本(元)']
+    const lines = series.map((p, i) => [p.date, p.shares, Math.round(p.lots), p.dShares, p.dLots, p.weight, prices[i] ?? '', costBasis[i] ?? ''].join(','))
     const csv = '﻿' + [header.join(','), ...lines].join('\n')
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
     const a = document.createElement('a')

@@ -64,7 +64,7 @@ export function diffRows(
     const weight = c?.weight ?? 0
     const prevWeight = b?.weight ?? 0
     const amount = c?.amount ?? 0
-    const price = shares > 0 ? amount / shares : (prevShares > 0 ? (b?.amount ?? 0) / prevShares : 0)
+    const price = shares > 0 ? amount : (prevShares > 0 ? (b?.amount ?? 0) : 0)
     let tag: ChangeTag
     if (!b && c) tag = 'new'
     else if (b && !c) tag = 'exit'
@@ -92,9 +92,9 @@ export function diffRows(
 
 /** estimated traded price per row (NT$/share), used for turnover proxy. */
 function rowPrice(r: ChangeRow): number {
-  if (r.shares > 0) return r.amount / r.shares
-  const prevAmount = r.amount - r.dAmount
-  return r.prevShares > 0 ? prevAmount / r.prevShares : 0
+  if (r.shares > 0) return r.amount
+  const prevPrice = r.amount - r.dAmount
+  return prevPrice > 0 ? prevPrice : 0
 }
 
 export interface Dashboard {
@@ -122,8 +122,8 @@ export function dashboard(
   const weights = cur.map((r) => r[3]).sort((a, b) => b - a)
   const top10Weight = weights.slice(0, 10).reduce((s, w) => s + w, 0)
   const hhi = weights.reduce((s, w) => s + w * w, 0)
-  const ups = rows.filter((r) => r.dShares > 0).sort((a, b) => b.dAmount - a.dAmount)
-  const downs = rows.filter((r) => r.dShares < 0).sort((a, b) => a.dAmount - b.dAmount)
+  const ups = rows.filter((r) => r.dShares > 0).sort((a, b) => b.dShares * b.amount - a.dShares * a.amount)
+  const downs = rows.filter((r) => r.dShares < 0).sort((a, b) => a.dShares * a.amount - b.dShares * b.amount)
   return {
     day,
     newCount: rows.filter((r) => r.tag === 'new').length,

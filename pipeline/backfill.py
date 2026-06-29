@@ -148,7 +148,10 @@ def _build_one_dataset(snap_dir, fund_code, fund_name, out_filename):
         rows = []
         for h in s["holdings"]:
             securities[h["code"]] = h["name"]
-            rows.append([h["code"], h["shares"], h["amount"], h["weight"]])
+            sh = h["shares"]
+            # amount col = NT$/share (每股金額): weight×NAV÷張數÷1000
+            per_share = round(h["amount"] / sh, 2) if sh else 0.0
+            rows.append([h["code"], sh, per_share, h["weight"]])
         holdings_by_date[dt] = rows
 
     dataset = {
