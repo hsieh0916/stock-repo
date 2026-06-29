@@ -19,7 +19,6 @@ import {
 } from '../lib/format'
 
 type Mode = 'all' | 'up' | 'down' | 'new' | 'exit'
-type Metric = 'price' | 'weight'
 
 interface Props {
   ds: Dataset
@@ -41,32 +40,24 @@ const MODES: { key: Mode; label: string }[] = [
 const ch = createColumnHelper<ChangeRow>()
 
 export function ChangeTable({ ds, baseDate, compareDate, onSelect, isWatched, onToggleWatch }: Props) {
-  const [priceThreshold, setPriceThreshold] = useState(0)
   const [mode, setMode] = useState<Mode>('all')
-  const [metric, setMetric] = useState<Metric>('price')
   const [query, setQuery] = useState('')
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'price', desc: true }])
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'weight', desc: true }])
 
   const allRows = useMemo(
     () => diffRows(ds, baseDate, compareDate),
     [ds, baseDate, compareDate],
   )
 
-  const weightAllMode = metric === 'weight' && mode === 'all'
-
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
     return allRows.filter((r) => {
-      if (weightAllMode) {
-        if (r.shares <= 10000) return false
-      } else if (metric === 'price') {
-        if (r.price < priceThreshold) return false
-      }
+      if (mode === 'all' && r.shares <= 10000) return false
       if (mode !== 'all' && r.tag !== mode) return false
       if (q && !(r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q))) return false
       return true
     })
-  }, [allRows, priceThreshold, mode, metric, query, weightAllMode])
+  }, [allRows, mode, query])
 
   const columns = useMemo(
     () => [
@@ -100,7 +91,7 @@ export function ChangeTable({ ds, baseDate, compareDate, onSelect, isWatched, on
         cell: (c) => <Badge tag={c.getValue() as ChangeTag} />,
       }),
       ch.accessor('price', {
-        header: '每股金額',
+        header: '購入金額',
         cell: (c) => <span className="tabular-nums">{Math.round(c.getValue()).toLocaleString('en-US')} 元</span>,
       }),
       ch.accessor('shares', {
@@ -134,11 +125,6 @@ export function ChangeTable({ ds, baseDate, compareDate, onSelect, isWatched, on
     getSortedRowModel: getSortedRowModel(),
   })
 
-  function switchMetric(m: Metric) {
-    setMetric(m)
-    setSorting([{ id: m === 'price' ? 'price' : 'dWeight', desc: true }])
-  }
-
   function exportCsv() {
     const header = ['代號', '名稱', '標記', '今日張數', 'Δ張數', '今日權重%', 'Δ權重%', 'Δ金額']
     const tagText: Record<ChangeTag, string> = { new: '新進', exit: '出清', up: '增持', down: '減持', flat: '持平' }
@@ -159,37 +145,9 @@ export function ChangeTable({ ds, baseDate, compareDate, onSelect, isWatched, on
     <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
       {/* controls */}
       <div className="flex flex-wrap items-center gap-3 p-3 border-b border-gray-100 dark:border-gray-800">
-        <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-700 overflow-hidden text-sm">
-          {(['weight', 'price'] as Metric[]).map((m) => (
-            <button
-              key={m}
-              onClick={() => switchMetric(m)}
-              className={`px-2.5 py-1 ${metric === m ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-            >
-              {m === 'price' ? '每股金額' : '權重視角'}
-            </button>
-          ))}
-        </div>
-
-        {weightAllMode ? (
+        {mode === 'all' && (
           <span className="text-sm text-gray-500 dark:text-gray-400">顯示持股 &gt; 10 張的所有持股</span>
-        ) : metric === 'price' ? (
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">每股金額 ≥</span>
-            <input
-              type="range"
-              min={0}
-              max={3000}
-              step={10}
-              value={priceThreshold}
-              onChange={(e) => setPriceThreshold(Number(e.target.value))}
-              className="w-32 sm:w-40 accent-indigo-600"
-            />
-            <span className="tabular-nums w-20">
-              {priceThreshold.toLocaleString()} 元
-            </span>
-          </div>
-        ) : null}
+        )}
 
         <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-700 overflow-hidden text-sm">
           {MODES.map((m) => (
