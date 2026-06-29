@@ -97,7 +97,7 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
   const recent = [...series].reverse().slice(0, 20)
 
   function exportCsv() {
-    const header = ['日期', '股數', '張數', 'Δ股數', 'Δ張數', '權重%', '每股金額(元)', '持有成本(元)']
+    const header = ['日期', '股數', '張數', 'Δ股數', 'Δ張數', '權重%', '購入金額(元)', '持有成本(元)']
     const lines = series.map((p, i) => [p.date, p.shares, Math.round(p.lots), p.dShares, p.dLots, p.weight, prices[i] ?? '', costBasis[i] ?? ''].join(','))
     const csv = '﻿' + [header.join(','), ...lines].join('\n')
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
