@@ -59,7 +59,11 @@ export default function App() {
     setCached(null)
   }
 
-  const url = `${import.meta.env.BASE_URL}${ETF_DATASETS[etf] ?? 'dataset.json'}`
+  // Include today's date so CDN/browser cache is busted once per day on initial load.
+  // The rev param adds a timestamp for same-day forced refreshes via the ↻ button.
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+  const baseUrl = `${import.meta.env.BASE_URL}${ETF_DATASETS[etf] ?? 'dataset.json'}`
+  const url = `${baseUrl}?v=${today}`
   const state = useDataset(url, rev)
 
   useEffect(() => {
