@@ -11,7 +11,7 @@ Dependency-free (stdlib only): urllib + http.cookiejar + json.
 import http.cookiejar
 import json
 import urllib.request
-from datetime import date as _date
+from datetime import date as _date, datetime as _datetime, timezone as _tz, timedelta as _td
 
 FUND_CODE = "49YTW"
 PCF_URL = "https://www.ezmoney.com.tw/ETF/Transaction/GetPCF"
@@ -97,7 +97,12 @@ def parse(raw):
             nav_per_unit = float(amt)
         pd = item.get("PostDate") or ""
         if "0001" not in pd and not post_date:
-            post_date = pd[:10]  # YYYY-MM-DD
+            if pd.startswith("/Date("):
+                # Microsoft JSON date /Date(ms_epoch)/ — interpret as Asia/Taipei (UTC+8)
+                ms = int(pd[6:pd.index(")")])
+                post_date = _datetime.fromtimestamp(ms / 1000, tz=_tz(_td(hours=8))).strftime("%Y-%m-%d")
+            else:
+                post_date = pd[:10]  # YYYY-MM-DD
 
     if not post_date:
         return None
