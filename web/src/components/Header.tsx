@@ -25,9 +25,11 @@ interface Props {
   onToggleDark: () => void
   etf: string
   onSetEtf: (code: string) => void
+  refreshing: boolean
+  onRefresh: () => void
 }
 
-export function Header({ ds, dark, onToggleDark, etf, onSetEtf }: Props) {
+export function Header({ ds, dark, onToggleDark, etf, onSetEtf, refreshing, onRefresh }: Props) {
   return (
     <header className="border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur sticky top-0 z-20">
       <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3 flex-wrap">
@@ -59,6 +61,14 @@ export function Header({ ds, dark, onToggleDark, etf, onSetEtf }: Props) {
         <span className="ml-auto text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">
           資料 {ds.generated_dates.first} ~ {ds.generated_dates.last}（{ds.generated_dates.count} 交易日）
         </span>
+        <button
+          onClick={onRefresh}
+          disabled={refreshing}
+          className="rounded-md border border-gray-300 dark:border-gray-700 px-2 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+          title="更新資料"
+        >
+          <span className={refreshing ? 'inline-block animate-spin' : ''}>↻</span>
+        </button>
         <button
           onClick={onToggleDark}
           className="rounded-md border border-gray-300 dark:border-gray-700 px-2 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"

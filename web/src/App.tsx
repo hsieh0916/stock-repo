@@ -50,25 +50,36 @@ function useDark(): [boolean, () => void] {
 export default function App() {
   const [dark, toggleDark] = useDark()
   const [etf, setEtf] = useState(() => localStorage.getItem('etf-tracker.etf') ?? '00991A')
+  const [rev, setRev] = useState(0)
+  const [cached, setCached] = useState<Dataset | null>(null)
 
   function handleSetEtf(code: string) {
     setEtf(code)
     localStorage.setItem('etf-tracker.etf', code)
+    setCached(null)
   }
 
   const url = `${import.meta.env.BASE_URL}${ETF_DATASETS[etf] ?? 'dataset.json'}`
-  const state = useDataset(url)
+  const state = useDataset(url, rev)
 
-  if (state.status === 'loading') return <Centered>載入資料中…</Centered>
+  useEffect(() => {
+    if (state.status === 'ready') setCached(state.data)
+  }, [state])
+
+  const refreshing = state.status === 'loading'
+
   if (state.status === 'error') return <Centered>資料載入失敗：{state.error}</Centered>
+  if (!cached) return <Centered>載入資料中…</Centered>
   return (
     <Main
-      ds={state.data}
+      ds={cached}
       dark={dark}
       toggleDark={toggleDark}
       etf={etf}
       onSetEtf={handleSetEtf}
       sourceNote={ETF_SOURCES[etf] ?? ''}
+      refreshing={refreshing}
+      onRefresh={() => setRev((r) => r + 1)}
     />
   )
 }
@@ -80,9 +91,11 @@ interface MainProps {
   etf: string
   onSetEtf: (code: string) => void
   sourceNote: string
+  refreshing: boolean
+  onRefresh: () => void
 }
 
-function Main({ ds, dark, toggleDark, etf, onSetEtf, sourceNote }: MainProps) {
+function Main({ ds, dark, toggleDark, etf, onSetEtf, sourceNote, refreshing, onRefresh }: MainProps) {
   const dates = tradingDates(ds)
   const last = dates[dates.length - 1]
   const [tab, setTab] = useState<'investor' | 'analysis'>('investor')
@@ -107,7 +120,7 @@ function Main({ ds, dark, toggleDark, etf, onSetEtf, sourceNote }: MainProps) {
 
   return (
     <div className="min-h-full bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-      <Header ds={ds} dark={dark} onToggleDark={toggleDark} etf={etf} onSetEtf={onSetEtf} />
+      <Header ds={ds} dark={dark} onToggleDark={toggleDark} etf={etf} onSetEtf={onSetEtf} refreshing={refreshing} onRefresh={onRefresh} />
 
       <div className="mx-auto max-w-7xl px-4 py-4 space-y-4">
         <div className="flex flex-wrap items-center gap-3">
