@@ -11,7 +11,8 @@ export function useDataset(url: string, rev = 0): State {
   useEffect(() => {
     let alive = true
     setState({ status: 'loading' })
-    fetch(url, rev > 0 ? { cache: 'no-store' } : undefined)
+    const fetchUrl = rev > 0 ? `${url}?v=${Date.now()}` : url
+    fetch(fetchUrl)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()
