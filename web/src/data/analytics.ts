@@ -92,9 +92,7 @@ export function diffRows(
 
 /** estimated traded price per row (NT$/share), used for turnover proxy. */
 function rowPrice(r: ChangeRow): number {
-  if (r.shares > 0) return r.amount
-  const prevPrice = r.amount - r.dAmount
-  return prevPrice > 0 ? prevPrice : 0
+  return r.price // correctly set in diffRows: today's price for held, prev-day for exits
 }
 
 export interface Dashboard {
