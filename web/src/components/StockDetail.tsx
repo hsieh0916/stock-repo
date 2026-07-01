@@ -129,6 +129,8 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
             { label: 'Goodinfo', href: `https://goodinfo.tw/tw/StockDetail.asp?STOCK_ID=${code}` },
             { label: 'TradingView', href: `https://www.tradingview.com/symbols/TWSE-${code}/` },
             { label: '玩股網', href: `https://www.wantgoo.com/stock/${code}` },
+            { label: '財報狗', href: `https://statementdog.com/analysis/${code}` },
+            { label: '嗨投資', href: `https://histock.tw/stock/${code}` },
           ].map(({ label, href }) => (
             <a key={label} href={href} target="_blank" rel="noreferrer"
               className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
