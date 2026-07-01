@@ -52,7 +52,6 @@ export function ChangeTable({ ds, baseDate, compareDate, onSelect, isWatched, on
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
     return allRows.filter((r) => {
-      if (mode === 'all' && r.shares <= 10000) return false
       if (mode !== 'all' && r.tag !== mode) return false
       if (q && !(r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q))) return false
       return true
@@ -145,9 +144,6 @@ export function ChangeTable({ ds, baseDate, compareDate, onSelect, isWatched, on
     <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
       {/* controls */}
       <div className="flex flex-wrap items-center gap-3 p-3 border-b border-gray-100 dark:border-gray-800">
-        {mode === 'all' && (
-          <span className="text-sm text-gray-500 dark:text-gray-400">顯示持股 &gt; 10 張的所有持股</span>
-        )}
 
         <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-700 overflow-hidden text-sm">
           {MODES.map((m) => (
