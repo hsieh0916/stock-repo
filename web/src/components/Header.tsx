@@ -34,7 +34,7 @@ export function Header({ ds, dark, onToggleDark, etf, onSetEtf, refreshing, onRe
     <header className="border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur sticky top-0 z-20">
       <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3 flex-wrap">
         <a href="/" className="flex items-center gap-1.5 shrink-0 mr-1" title="主動ETF持股雷達">
-          <img src="/favicon.svg" alt="logo" className="w-6 h-6" />
+          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="logo" className="w-6 h-6" />
           <span className="font-bold text-sm tracking-tight hidden sm:inline" style={{ color: '#863bff' }}>主動ETF持股雷達</span>
         </a>
         <div className="flex items-center gap-2 flex-wrap">
