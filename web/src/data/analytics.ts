@@ -99,6 +99,10 @@ function rowPrice(r: ChangeRow): number {
 
 export interface Dashboard {
   day: FundDay
+  prevNavPerUnit: number | null
+  prevNavTotal: number | null
+  ma20: number | null // 月線: 20-day MA of nav_per_unit
+  ma60: number | null // 季線: 60-day MA of nav_per_unit
   newCount: number
   exitCount: number
   changedCount: number // |dShares|>0
@@ -109,12 +113,20 @@ export interface Dashboard {
   topSells: ChangeRow[]
 }
 
+function mavg(series: FundDay[], upToIdx: number, n: number): number | null {
+  const slice = series.slice(Math.max(0, upToIdx - n + 1), upToIdx + 1)
+  if (slice.length === 0) return null
+  return slice.reduce((s, d) => s + d.nav_per_unit, 0) / slice.length
+}
+
 export function dashboard(
   ds: Dataset,
   baseDate: string,
   compareDate: string,
 ): Dashboard {
   const day = fundDay(ds, compareDate)!
+  const prevDay = fundDay(ds, baseDate)
+  const compareIdx = ds.fund_series.findIndex((d) => d.date === compareDate)
   const rows = diffRows(ds, baseDate, compareDate)
   let traded = 0
   for (const r of rows) traded += Math.abs(r.dShares) * rowPrice(r)
@@ -126,6 +138,10 @@ export function dashboard(
   const downs = rows.filter((r) => r.dShares < 0).sort((a, b) => a.dAmount - b.dAmount)
   return {
     day,
+    prevNavPerUnit: prevDay?.nav_per_unit ?? null,
+    prevNavTotal: prevDay?.nav_total ?? null,
+    ma20: compareIdx >= 0 ? mavg(ds.fund_series, compareIdx, 20) : null,
+    ma60: compareIdx >= 0 ? mavg(ds.fund_series, compareIdx, 60) : null,
     newCount: rows.filter((r) => r.tag === 'new').length,
     exitCount: rows.filter((r) => r.tag === 'exit').length,
     changedCount: rows.filter((r) => r.dShares !== 0).length,

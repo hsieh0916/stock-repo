@@ -1,14 +1,44 @@
 import { useMemo } from 'react'
 import type { Dataset } from '../data/types'
 import { dashboard } from '../data/analytics'
-import { fmtInt, fmtPct, fmtSignedYi, fmtYi, upDown } from '../lib/format'
+import { fmtInt, fmtPct, fmtSignedPct, fmtSignedYi, fmtYi, upDown } from '../lib/format'
 
-function Card({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
+function Card({
+  label,
+  value,
+  sub,
+  detail,
+}: {
+  label: string
+  value: React.ReactNode
+  sub?: React.ReactNode
+  detail?: React.ReactNode
+}) {
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3">
       <div className="text-xs text-gray-500 dark:text-gray-400">{label}</div>
       <div className="mt-1 text-lg font-semibold tabular-nums">{value}</div>
-      {sub != null && <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{sub}</div>}
+      {sub != null && <div className="text-xs mt-0.5">{sub}</div>}
+      {detail != null && <div className="mt-1.5 text-xs space-y-0.5">{detail}</div>}
+    </div>
+  )
+}
+
+function MaRow({ label, nav, ma }: { label: string; nav: number; ma: number | null }) {
+  if (ma == null) return null
+  const diff = nav - ma
+  const bias = (diff / ma) * 100
+  return (
+    <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+      <span className="w-7 shrink-0">{label}</span>
+      <span className="tabular-nums">{ma.toFixed(2)}</span>
+      <span className="mx-0.5 text-gray-300 dark:text-gray-600">│</span>
+      <span className={`tabular-nums ${upDown(diff)}`}>
+        {diff >= 0 ? '+' : ''}{diff.toFixed(2)}
+      </span>
+      <span className={`tabular-nums ${upDown(bias)}`}>
+        ({fmtSignedPct(bias, 2)})
+      </span>
     </div>
   )
 }
@@ -23,11 +53,49 @@ interface Props {
 export function DashboardCards({ ds, baseDate, compareDate, onSelect }: Props) {
   const d = useMemo(() => dashboard(ds, baseDate, compareDate), [ds, baseDate, compareDate])
 
+  const nav = d.day.nav_per_unit
+  const navChgPct = d.prevNavPerUnit && d.prevNavPerUnit > 0
+    ? ((nav - d.prevNavPerUnit) / d.prevNavPerUnit) * 100
+    : null
+
+  const aumChgPct = d.prevNavTotal && d.prevNavTotal > 0
+    ? ((d.day.nav_total - d.prevNavTotal) / d.prevNavTotal) * 100
+    : null
+  const aumDiff = d.prevNavTotal != null ? d.day.nav_total - d.prevNavTotal : null
+
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <Card label="基金規模" value={fmtYi(d.day.nav_total)} />
-        <Card label="每單位淨值" value={d.day.nav_per_unit?.toFixed(2)} />
+        <Card
+          label="基金規模"
+          value={fmtYi(d.day.nav_total)}
+          sub={
+            aumChgPct != null ? (
+              <span className={upDown(aumChgPct)}>
+                {fmtSignedPct(aumChgPct, 2)}&ensp;{fmtSignedYi(aumDiff!)}
+              </span>
+            ) : undefined
+          }
+        />
+        <Card
+          label="每單位淨值"
+          value={
+            <span>
+              {nav.toFixed(2)}&thinsp;
+              {navChgPct != null && (
+                <span className={`text-sm font-normal ${upDown(navChgPct)}`}>
+                  {fmtSignedPct(navChgPct, 2)}
+                </span>
+              )}
+            </span>
+          }
+          detail={
+            <>
+              <MaRow label="月線" nav={nav} ma={d.ma20} />
+              <MaRow label="季線" nav={nav} ma={d.ma60} />
+            </>
+          }
+        />
         <Card label="持股檔數" value={d.day.n_holdings} sub={`新進 ${d.newCount}／出清 ${d.exitCount}`} />
         <Card label="當日換手率(估)" value={fmtPct(d.turnover * 100, 1)} sub="Σ|Δ持股市值|/規模" />
         <Card label="前10大權重" value={fmtPct(d.top10Weight, 1)} />
