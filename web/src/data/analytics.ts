@@ -99,6 +99,8 @@ export interface Dashboard {
   day: FundDay
   prevNavPerUnit: number | null
   prevNavTotal: number | null
+  weekNavTotal: number | null  // ~5 trading days ago
+  monthNavTotal: number | null // ~20 trading days ago
   ma20: number | null // 月線: 20-day MA of nav_per_unit
   ma60: number | null // 季線: 60-day MA of nav_per_unit
   newCount: number
@@ -134,10 +136,14 @@ export function dashboard(
   const hhi = weights.reduce((s, w) => s + w * w, 0)
   const ups = rows.filter((r) => r.dShares > 0).sort((a, b) => b.dAmount - a.dAmount)
   const downs = rows.filter((r) => r.dShares < 0).sort((a, b) => a.dAmount - b.dAmount)
+  const weekDay = compareIdx >= 5 ? ds.fund_series[compareIdx - 5] : null
+  const monthDay = compareIdx >= 20 ? ds.fund_series[compareIdx - 20] : null
   return {
     day,
     prevNavPerUnit: prevDay?.nav_per_unit ?? null,
     prevNavTotal: prevDay?.nav_total ?? null,
+    weekNavTotal: weekDay?.nav_total ?? null,
+    monthNavTotal: monthDay?.nav_total ?? null,
     ma20: compareIdx >= 0 ? mavg(ds.fund_series, compareIdx, 20) : null,
     ma60: compareIdx >= 0 ? mavg(ds.fund_series, compareIdx, 60) : null,
     newCount: rows.filter((r) => r.tag === 'new').length,

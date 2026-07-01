@@ -58,10 +58,15 @@ export function DashboardCards({ ds, baseDate, compareDate, onSelect }: Props) {
     ? ((nav - d.prevNavPerUnit) / d.prevNavPerUnit) * 100
     : null
 
-  const aumChgPct = d.prevNavTotal && d.prevNavTotal > 0
-    ? ((d.day.nav_total - d.prevNavTotal) / d.prevNavTotal) * 100
-    : null
-  const aumDiff = d.prevNavTotal != null ? d.day.nav_total - d.prevNavTotal : null
+  function aumChg(ref: number | null) {
+    if (ref == null || ref <= 0) return null
+    const pct = (d.day.nav_total - ref) / ref * 100
+    const diff = d.day.nav_total - ref
+    return { pct, diff }
+  }
+  const dayAum = aumChg(d.prevNavTotal)
+  const weekAum = aumChg(d.weekNavTotal)
+  const monthAum = aumChg(d.monthNavTotal)
 
   return (
     <div className="space-y-3">
@@ -69,12 +74,33 @@ export function DashboardCards({ ds, baseDate, compareDate, onSelect }: Props) {
         <Card
           label="基金規模"
           value={fmtYi(d.day.nav_total)}
-          sub={
-            aumChgPct != null ? (
-              <span className={upDown(aumChgPct)}>
-                {fmtSignedPct(aumChgPct, 2)}&ensp;{fmtSignedYi(aumDiff!)}
-              </span>
-            ) : undefined
+          detail={
+            <>
+              {dayAum && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400 dark:text-gray-500 shrink-0">日</span>
+                  <span className={upDown(dayAum.pct)}>
+                    {fmtSignedPct(dayAum.pct, 2)}&ensp;{fmtSignedYi(dayAum.diff)}
+                  </span>
+                </div>
+              )}
+              {weekAum && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400 dark:text-gray-500 shrink-0">週</span>
+                  <span className={upDown(weekAum.pct)}>
+                    {fmtSignedPct(weekAum.pct, 2)}&ensp;{fmtSignedYi(weekAum.diff)}
+                  </span>
+                </div>
+              )}
+              {monthAum && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400 dark:text-gray-500 shrink-0">月</span>
+                  <span className={upDown(monthAum.pct)}>
+                    {fmtSignedPct(monthAum.pct, 2)}&ensp;{fmtSignedYi(monthAum.diff)}
+                  </span>
+                </div>
+              )}
+            </>
           }
         />
         <Card
