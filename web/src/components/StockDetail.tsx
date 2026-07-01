@@ -125,14 +125,16 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
           </button>
           <span className="font-mono text-sm text-gray-500">{code}</span>
           <span className="text-lg font-bold">{name}</span>
-          <a
-            href={`https://goodinfo.tw/tw/StockDetail.asp?STOCK_ID=${code}`}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
-          >
-            Goodinfo ↗
-          </a>
+          {[
+            { label: 'Goodinfo', href: `https://goodinfo.tw/tw/StockDetail.asp?STOCK_ID=${code}` },
+            { label: 'TradingView', href: `https://www.tradingview.com/symbols/TWSE-${code}/` },
+            { label: '玩股網', href: `https://www.wantgoo.com/stock/${code}` },
+          ].map(({ label, href }) => (
+            <a key={label} href={href} target="_blank" rel="noreferrer"
+              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
+              {label} ↗
+            </a>
+          ))}
           <button onClick={onClose} className="ml-auto rounded-md px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800">✕</button>
         </div>
 
