@@ -18,6 +18,7 @@ import sectors
 
 def main():
     dry = "--dry-run" in sys.argv
+    no_notify = "--no-notify" in sys.argv
     try:
         errs = backfill.backfill()
     except Exception as e:
@@ -80,10 +81,13 @@ def main():
         prices.build()
     except Exception as e:
         print(f"daily: prices fetch skipped: {e}")
-    try:
-        notify.run(dry_run=dry)
-    except Exception as e:
-        print(f"daily: notify skipped: {e}")
+    if no_notify:
+        print("daily: notify skipped (--no-notify)")
+    else:
+        try:
+            notify.run(dry_run=dry)
+        except Exception as e:
+            print(f"daily: notify skipped: {e}")
 
     # health signal for CI (does NOT block deploy; a post-deploy job alerts on it)
     failed = errs > 0
