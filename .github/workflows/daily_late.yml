@@ -39,6 +39,7 @@ jobs:
             echo "no new data"
           else
             git commit -m "data: late update [skip ci]"
+            git pull --rebase origin main
             git push
           fi
 

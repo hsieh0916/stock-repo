@@ -46,6 +46,7 @@ jobs:
             echo "no data changes"
           else
             git commit -m "data: daily update [skip ci]"
+            git pull --rebase origin main
             git push
           fi
 
