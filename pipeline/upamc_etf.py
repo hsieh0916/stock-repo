@@ -95,10 +95,11 @@ def parse(raw):
             units = int(amt)
         elif code == "P_UNIT":
             nav_per_unit = float(amt)
-        pd = item.get("PostDate") or ""
+        # TranDate = actual trading/data date shown on official site (T+0)
+        # PostDate = publication date (T+1), which the official site does NOT show
+        pd = item.get("TranDate") or ""
         if "0001" not in pd and not post_date:
             if pd.startswith("/Date("):
-                # Microsoft JSON date /Date(ms_epoch)/ — interpret as Asia/Taipei (UTC+8)
                 ms = int(pd[6:pd.index(")")])
                 post_date = _datetime.fromtimestamp(ms / 1000, tz=_tz(_td(hours=8))).strftime("%Y-%m-%d")
             else:

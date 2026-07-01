@@ -77,8 +77,8 @@ def fetch_parse(date_ymd=None, timeout=30):
     if not fund_id or not stocks:
         return None
 
-    # PCF date: "2026-06-29T00:00:00" → "2026-06-29"
-    raw_date = d.get("CPcfdate") or ""
+    # CNavDt = NAV date shown on official site (T+0); CPcfdate = PCF settlement date (T+1)
+    raw_date = d.get("CNavDt") or d.get("CPcfdate") or ""
     date_str = raw_date[:10] if raw_date else None
     if not date_str or date_str.startswith("0001"):
         return None

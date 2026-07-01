@@ -4,8 +4,8 @@ Uses ezmoney.com.tw /ETF/Transaction/GetPCF JSON endpoint (same as 00981A).
 Fund code: 61YTW. Data available from 2025-11-05.
 
 Publication schedule: T+2 trading days (global ETFs settle T+2).
-PostDate in response = publication date = snapshot date used here.
-PostDate field is in .NET /Date(ms)/ timestamp format (UTC).
+TranDate in response = actual trading/data date shown on official site (T+0).
+Timestamps represent midnight Asia/Taipei (UTC+8).
 """
 
 import datetime
@@ -24,14 +24,17 @@ def _roc(iso_date: str) -> str:
     return f"{int(y) - 1911}/{m}/{d}"
 
 
+_TZ_TW = datetime.timezone(datetime.timedelta(hours=8))
+
+
 def _parse_net_date(s) -> str | None:
-    """Parse /Date(ms)/ or YYYY-MM-DD → 'YYYY-MM-DD', or None."""
+    """Parse /Date(ms)/ or YYYY-MM-DD → 'YYYY-MM-DD' in Asia/Taipei (UTC+8), or None."""
     if not s:
         return None
     m = re.match(r"/Date\((\d+)", str(s))
     if m:
         ts = int(m.group(1)) // 1000
-        return datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).strftime("%Y-%m-%d")
+        return datetime.datetime.fromtimestamp(ts, tz=_TZ_TW).strftime("%Y-%m-%d")
     if re.match(r"\d{4}-\d{2}-\d{2}", str(s)):
         return str(s)[:10]
     return None
@@ -93,7 +96,8 @@ def parse(raw):
         elif code == "P_UNIT":
             nav_per_unit = float(amt)
         if not post_date:
-            pd = _parse_net_date(item.get("PostDate"))
+            # TranDate = actual trading/data date shown on official site (T+0)
+            pd = _parse_net_date(item.get("TranDate"))
             if pd and not pd.startswith("0001"):
                 post_date = pd
 
