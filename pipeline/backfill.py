@@ -40,6 +40,21 @@ START_00980A = datetime.date(2025, 5, 5)   # 00980A listing date
 START_00988A = datetime.date(2025, 11, 1)  # 00988A first PCF ~2025-11-05 (T+2 publish)
 START_00990A = datetime.date(2026, 1, 2)   # 00990A first available date
 END = datetime.date.today()
+RECENT_CUTOFF = END - datetime.timedelta(days=7)  # re-fetch & compare within this window
+
+
+def _snap_changed(path, snap):
+    """Return True if snap differs from saved file (or file missing).
+    Compares nav_total and nav_per_unit to detect official-site corrections."""
+    if not os.path.exists(path):
+        return True
+    try:
+        with open(path, encoding="utf-8") as f:
+            old = json.load(f)
+        return (old.get("nav_total") != snap.get("nav_total") or
+                old.get("nav_per_unit") != snap.get("nav_per_unit"))
+    except Exception:
+        return True
 
 
 def daterange(a, b):
@@ -54,11 +69,11 @@ def backfill():
     """Fetch any missing 00991A trading days up to today. Returns error count."""
     os.makedirs(SNAP_DIR, exist_ok=True)
     os.makedirs(PUB_DIR, exist_ok=True)
-    got, empty, errs = 0, 0, 0
+    got, updated, empty, errs = 0, 0, 0, 0
     for d in daterange(START, END):
         ymd = d.strftime("%Y%m%d")
         out_path = os.path.join(SNAP_DIR, f"{d.isoformat()}.json")
-        if os.path.exists(out_path):
+        if os.path.exists(out_path) and d < RECENT_CUTOFF:
             got += 1
             continue
         try:
@@ -74,21 +89,23 @@ def backfill():
         if snap is None:
             empty += 1
         else:
-            with open(out_path, "w", encoding="utf-8") as f:
-                json.dump(snap, f, ensure_ascii=False)
+            if _snap_changed(out_path, snap):
+                with open(out_path, "w", encoding="utf-8") as f:
+                    json.dump(snap, f, ensure_ascii=False)
+                updated += 1
             got += 1
         time.sleep(0.2)
-    print(f"00991A backfill: {got} days saved, {empty} non-trading skipped, {errs} errors")
+    print(f"00991A backfill: {got} days saved/checked, {updated} updated, {empty} non-trading skipped, {errs} errors")
     return errs
 
 
 def backfill_00981a():
     """Fetch all missing 00981A trading days from inception to today. Returns error count."""
     os.makedirs(SNAP_DIR_00981A, exist_ok=True)
-    got, empty, errs = 0, 0, 0
+    got, updated, empty, errs = 0, 0, 0, 0
     for d in daterange(START_00981A, END):
         out_path = os.path.join(SNAP_DIR_00981A, f"{d.isoformat()}.json")
-        if os.path.exists(out_path):
+        if os.path.exists(out_path) and d < RECENT_CUTOFF:
             got += 1
             continue
         try:
@@ -107,12 +124,13 @@ def backfill_00981a():
             # Use snap['date'] as filename (PostDate from API, may differ from requested date)
             actual_date = snap.get("date", d.isoformat())
             actual_path = os.path.join(SNAP_DIR_00981A, f"{actual_date}.json")
-            if not os.path.exists(actual_path):
+            if _snap_changed(actual_path, snap):
                 with open(actual_path, "w", encoding="utf-8") as f:
                     json.dump(snap, f, ensure_ascii=False)
+                updated += 1
             got += 1
         time.sleep(0.3)
-    print(f"00981A backfill: {got} days saved, {empty} non-trading skipped, {errs} errors")
+    print(f"00981A backfill: {got} days saved/checked, {updated} updated, {empty} non-trading skipped, {errs} errors")
     return errs
 
 
@@ -188,10 +206,10 @@ def build_dataset_00981a():
 def backfill_00982a():
     """Fetch all missing 00982A trading days from inception to today. Returns error count."""
     os.makedirs(SNAP_DIR_00982A, exist_ok=True)
-    got, empty, errs = 0, 0, 0
+    got, updated, empty, errs = 0, 0, 0, 0
     for d in daterange(START_00982A, END):
         out_path = os.path.join(SNAP_DIR_00982A, f"{d.isoformat()}.json")
-        if os.path.exists(out_path):
+        if os.path.exists(out_path) and d < RECENT_CUTOFF:
             got += 1
             continue
         try:
@@ -209,9 +227,10 @@ def backfill_00982a():
         else:
             actual_date = snap.get("date", d.isoformat())
             actual_path = os.path.join(SNAP_DIR_00982A, f"{actual_date}.json")
-            if not os.path.exists(actual_path):
+            if _snap_changed(actual_path, snap):
                 with open(actual_path, "w", encoding="utf-8") as f:
                     json.dump(snap, f, ensure_ascii=False)
+                updated += 1
             got += 1
         time.sleep(0.3)
     # Also fetch latest (no-date) to capture today's same-day PCF (avoids T+1 lag)
@@ -220,13 +239,13 @@ def backfill_00982a():
         if snap:
             actual_date = snap.get("date")
             actual_path = os.path.join(SNAP_DIR_00982A, f"{actual_date}.json")
-            if not os.path.exists(actual_path):
+            if _snap_changed(actual_path, snap):
                 with open(actual_path, "w", encoding="utf-8") as f:
                     json.dump(snap, f, ensure_ascii=False)
-                got += 1
+                updated += 1
     except Exception as e:
         print(f"  00982A latest fetch failed: {e}")
-    print(f"00982A backfill: {got} days saved, {empty} non-trading skipped, {errs} errors")
+    print(f"00982A backfill: {got} days saved/checked, {updated} updated, {empty} non-trading skipped, {errs} errors")
     return errs
 
 
@@ -239,10 +258,10 @@ def build_dataset_00982a():
 def backfill_00980a():
     """Fetch all missing 00980A trading days from inception to today. Returns error count."""
     os.makedirs(SNAP_DIR_00980A, exist_ok=True)
-    got, empty, errs = 0, 0, 0
+    got, updated, empty, errs = 0, 0, 0, 0
     for d in daterange(START_00980A, END):
         out_path = os.path.join(SNAP_DIR_00980A, f"{d.isoformat()}.json")
-        if os.path.exists(out_path):
+        if os.path.exists(out_path) and d < RECENT_CUTOFF:
             got += 1
             continue
         try:
@@ -260,12 +279,13 @@ def backfill_00980a():
         else:
             actual_date = snap.get("date", d.isoformat())
             actual_path = os.path.join(SNAP_DIR_00980A, f"{actual_date}.json")
-            if not os.path.exists(actual_path):
+            if _snap_changed(actual_path, snap):
                 with open(actual_path, "w", encoding="utf-8") as f:
                     json.dump(snap, f, ensure_ascii=False)
+                updated += 1
             got += 1
         time.sleep(0.3)
-    print(f"00980A backfill: {got} days saved, {empty} non-trading skipped, {errs} errors")
+    print(f"00980A backfill: {got} days saved/checked, {updated} updated, {empty} non-trading skipped, {errs} errors")
     return errs
 
 
@@ -299,7 +319,7 @@ def backfill_00988a():
         else:
             actual_date = snap.get("date", d.isoformat())
             actual_path = os.path.join(SNAP_DIR_00988A, f"{actual_date}.json")
-            if not os.path.exists(actual_path):
+            if _snap_changed(actual_path, snap):
                 with open(actual_path, "w", encoding="utf-8") as f:
                     json.dump(snap, f, ensure_ascii=False)
                 got += 1
@@ -319,10 +339,10 @@ def build_dataset_00988a():
 def backfill_00990a():
     """Fetch all missing 00990A trading days from inception to today. Returns error count."""
     os.makedirs(SNAP_DIR_00990A, exist_ok=True)
-    got, empty, errs = 0, 0, 0
+    got, updated, empty, errs = 0, 0, 0, 0
     for d in daterange(START_00990A, END):
         actual_path = os.path.join(SNAP_DIR_00990A, f"{d.isoformat()}.json")
-        if os.path.exists(actual_path):
+        if os.path.exists(actual_path) and d < RECENT_CUTOFF:
             got += 1
             continue
         try:
@@ -338,11 +358,13 @@ def backfill_00990a():
         if snap is None:
             empty += 1
         else:
-            with open(actual_path, "w", encoding="utf-8") as f:
-                json.dump(snap, f, ensure_ascii=False)
+            if _snap_changed(actual_path, snap):
+                with open(actual_path, "w", encoding="utf-8") as f:
+                    json.dump(snap, f, ensure_ascii=False)
+                updated += 1
             got += 1
         time.sleep(0.3)
-    print(f"00990A backfill: {got} days saved, {empty} non-trading skipped, {errs} errors")
+    print(f"00990A backfill: {got} days saved/checked, {updated} updated, {empty} non-trading skipped, {errs} errors")
     return errs
 
 
