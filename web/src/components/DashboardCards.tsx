@@ -2,6 +2,8 @@ import { useMemo } from 'react'
 import type { Dataset } from '../data/types'
 import { dashboard } from '../data/analytics'
 import { fmtInt, fmtPct, fmtSignedPct, fmtSignedYi, fmtYi, upDown } from '../lib/format'
+import { usePrices } from '../data/usePrices'
+import { useEtfPrice } from '../data/useEtfPrice'
 
 function Card({
   label,
@@ -52,11 +54,15 @@ interface Props {
 
 export function DashboardCards({ ds, baseDate, compareDate, onSelect }: Props) {
   const d = useMemo(() => dashboard(ds, baseDate, compareDate), [ds, baseDate, compareDate])
+  const prices = usePrices()
+  const closePrice = prices[ds.fund.code] ?? null
+  const { price: mktPrice, updatedAt, isRealtime } = useEtfPrice(ds.fund.code, closePrice)
 
   const nav = d.day.nav_per_unit
   const navChgPct = d.prevNavPerUnit && d.prevNavPerUnit > 0
     ? ((nav - d.prevNavPerUnit) / d.prevNavPerUnit) * 100
     : null
+  const premium = mktPrice != null && nav > 0 ? (mktPrice - nav) / nav * 100 : null
 
   function aumChg(ref: number | null) {
     if (ref == null || ref <= 0) return null
@@ -70,7 +76,7 @@ export function DashboardCards({ ds, baseDate, compareDate, onSelect }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <Card
           label="基金規模"
           value={fmtYi(d.day.nav_total)}
@@ -122,6 +128,22 @@ export function DashboardCards({ ds, baseDate, compareDate, onSelect }: Props) {
               <MaRow label="年線" nav={nav} ma={d.ma240} />
               <MaRow label="近高" nav={nav} ma={d.recentHigh} />
             </>
+          }
+        />
+        <Card
+          label="市場價格"
+          value={mktPrice != null ? (
+            <span>{mktPrice.toFixed(2)}</span>
+          ) : '—'}
+          sub={premium != null ? (
+            <span className={upDown(premium)}>
+              折溢價 {fmtSignedPct(premium, 2)}
+            </span>
+          ) : undefined}
+          detail={
+            <span className="text-gray-400 dark:text-gray-500">
+              {isRealtime ? `即時 ${updatedAt}` : '收盤'}
+            </span>
           }
         />
         <Card label="持股檔數" value={d.day.n_holdings} sub={`新進 ${d.newCount}／出清 ${d.exitCount}`} />
