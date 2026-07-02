@@ -6,6 +6,23 @@ export interface EtfPriceState {
   isRealtime: boolean
 }
 
+// Yahoo Finance — historical CORS support; works during & outside market hours
+async function fetchYahoo(code: string): Promise<number | null> {
+  try {
+    const url =
+      `https://query1.finance.yahoo.com/v8/finance/chart/${code}.TW` +
+      `?interval=1d&range=1d`
+    const r = await fetch(url, { cache: 'no-store' })
+    if (!r.ok) return null
+    const data = await r.json()
+    const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice
+    return typeof price === 'number' && price > 0 ? price : null
+  } catch {
+    return null
+  }
+}
+
+// TWSE MIS — real-time during market hours, may be CORS-blocked in browsers
 async function fetchMis(code: string): Promise<number | null> {
   try {
     const url =
@@ -22,8 +39,9 @@ async function fetchMis(code: string): Promise<number | null> {
 }
 
 /**
- * Real-time ETF market price via TWSE MIS (updates every 30 min).
- * Falls back to closePrice when market is closed or API is unavailable.
+ * Real-time ETF market price (updates every 30 min).
+ * Tries Yahoo Finance first (CORS-friendly), then TWSE MIS.
+ * Falls back to closePrice (daily close from prices.json) when both fail.
  */
 export function useEtfPrice(code: string, closePrice: number | null): EtfPriceState {
   const [state, setState] = useState<EtfPriceState>({
@@ -36,7 +54,7 @@ export function useEtfPrice(code: string, closePrice: number | null): EtfPriceSt
     let alive = true
 
     async function poll() {
-      const rt = await fetchMis(code)
+      const rt = (await fetchYahoo(code)) ?? (await fetchMis(code))
       if (!alive) return
       if (rt != null) {
         const hhmm = new Date().toTimeString().slice(0, 5)
