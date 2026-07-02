@@ -178,6 +178,7 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
                       <th className="px-2 py-1.5 font-medium">ETF</th>
                       <th className="px-2 py-1.5 font-medium">名稱</th>
                       <th className="px-2 py-1.5 font-medium text-right">持股(張)</th>
+                      <th className="px-2 py-1.5 font-medium text-right">當日增減</th>
                       <th className="px-2 py-1.5 font-medium text-right">權重</th>
                     </tr>
                   </thead>
@@ -185,21 +186,25 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
                     {etfWeights.map((r) => {
                       const isCurrent = r.etfCode === ds.fund.code
                       const held = r.weight != null && r.weight > 0
+                      const dim = 'text-gray-400 dark:text-gray-600'
                       return (
                         <tr
                           key={r.etfCode}
                           className={`border-b border-gray-50 dark:border-gray-800/60 ${isCurrent ? 'bg-indigo-50 dark:bg-indigo-950/30' : ''}`}
                         >
-                          <td className={`px-2 py-1.5 font-mono text-xs ${held ? '' : 'text-gray-400 dark:text-gray-600'}`}>
+                          <td className={`px-2 py-1.5 font-mono text-xs ${held ? '' : dim}`}>
                             {r.etfCode}
                           </td>
-                          <td className={`px-2 py-1.5 text-xs ${held ? '' : 'text-gray-400 dark:text-gray-600'}`}>
+                          <td className={`px-2 py-1.5 text-xs ${held ? '' : dim}`}>
                             {r.etfName}
                           </td>
-                          <td className={`px-2 py-1.5 text-right tabular-nums ${held ? '' : 'text-gray-400 dark:text-gray-600'}`}>
+                          <td className={`px-2 py-1.5 text-right tabular-nums ${held ? '' : dim}`}>
                             {r.lots != null ? fmtLots(r.lots) : '—'}
                           </td>
-                          <td className={`px-2 py-1.5 text-right tabular-nums font-medium ${held ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-600'}`}>
+                          <td className={`px-2 py-1.5 text-right tabular-nums ${r.dLots != null && r.dLots !== 0 ? upDown(r.dLots) : dim}`}>
+                            {r.dLots != null && r.dLots !== 0 ? fmtSignedLots(r.dLots) : '—'}
+                          </td>
+                          <td className={`px-2 py-1.5 text-right tabular-nums font-medium ${held ? 'text-indigo-600 dark:text-indigo-400' : dim}`}>
                             {r.weight != null ? fmtPct(r.weight) : '—'}
                           </td>
                         </tr>

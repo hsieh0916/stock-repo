@@ -14,10 +14,12 @@ const ETF_FILES: [string, string, string][] = [
 export interface EtfWeightRow {
   etfCode: string
   etfName: string
-  weight: number | null  // null = not held
+  weight: number | null  // null = not held today
   shares: number | null
   lots: number | null
-  date: string | null    // latest data date for this ETF
+  dShares: number | null // today vs prev trading day (null if prev data unavailable)
+  dLots: number | null
+  date: string | null
 }
 
 // Module-level cache: one Promise<Dataset|null> per file, lives for the page session
@@ -35,6 +37,10 @@ function loadDataset(file: string): Promise<Dataset | null> {
   return _cache.get(file)!
 }
 
+function findShares(holdings: HoldingRow[], stockCode: string): number {
+  return holdings.find((h) => h[0] === stockCode)?.[1] ?? 0
+}
+
 export function useAllEtfWeights(stockCode: string): EtfWeightRow[] {
   const [rows, setRows] = useState<EtfWeightRow[]>([])
 
@@ -43,15 +49,27 @@ export function useAllEtfWeights(stockCode: string): EtfWeightRow[] {
     Promise.all(
       ETF_FILES.map(async ([etfCode, file, etfName]) => {
         const ds = await loadDataset(file)
-        const lastDay = ds?.fund_series[ds.fund_series.length - 1]
-        const holdings: HoldingRow[] = lastDay ? (ds!.holdings_by_date[lastDay.date] ?? []) : []
-        const row = holdings.find((h) => h[0] === stockCode)
+        const series = ds?.fund_series ?? []
+        const lastDay = series[series.length - 1]
+        const prevDay = series.length >= 2 ? series[series.length - 2] : null
+
+        const todayH: HoldingRow[] = lastDay ? (ds!.holdings_by_date[lastDay.date] ?? []) : []
+        const prevH: HoldingRow[] = prevDay ? (ds!.holdings_by_date[prevDay.date] ?? []) : []
+
+        const row = todayH.find((h) => h[0] === stockCode)
+        const curShares = row ? row[1] : 0
+        const prevShares = prevDay ? findShares(prevH, stockCode) : null
+
+        const dShares = prevShares !== null ? curShares - prevShares : null
+
         return {
           etfCode,
           etfName,
           weight: row ? row[3] : null,
           shares: row ? row[1] : null,
           lots: row ? row[1] / 1000 : null,
+          dShares,
+          dLots: dShares !== null ? dShares / 1000 : null,
           date: lastDay?.date ?? null,
         }
       }),
