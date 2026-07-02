@@ -133,6 +133,20 @@ def backfill_00981a():
                 updated += 1
             got += 1
         time.sleep(0.3)
+    # Also fetch latest (no-date) to capture today's data (avoids T+1 lag)
+    try:
+        snap = upamc_etf.fetch_parse(None)
+        if snap:
+            actual_date = snap.get("date")
+            if actual_date:
+                actual_path = os.path.join(SNAP_DIR_00981A, f"{actual_date}.json")
+                if _snap_changed(actual_path, snap):
+                    with open(actual_path, "w", encoding="utf-8") as f:
+                        json.dump(snap, f, ensure_ascii=False)
+                    updated += 1
+                    got += 1
+    except Exception as e:
+        print(f"  00981A latest fetch failed: {e}")
     print(f"00981A backfill: {got} days saved/checked, {updated} updated, {empty} non-trading skipped, {errs} errors")
     return errs
 
@@ -340,6 +354,19 @@ def backfill_00988a():
             else:
                 got += 1
         time.sleep(0.3)
+    # Also fetch latest (no-date) to capture today's data (avoids T+1 lag)
+    try:
+        snap = upamc_global_etf.fetch_parse(None)
+        if snap:
+            actual_date = snap.get("date")
+            if actual_date:
+                actual_path = os.path.join(SNAP_DIR_00988A, f"{actual_date}.json")
+                if _snap_changed(actual_path, snap):
+                    with open(actual_path, "w", encoding="utf-8") as f:
+                        json.dump(snap, f, ensure_ascii=False)
+                    got += 1
+    except Exception as e:
+        print(f"  00988A latest fetch failed: {e}")
     print(f"00988A backfill: {got} saved/dedup, {empty} non-trading skipped, {errs} errors")
     return errs
 
