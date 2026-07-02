@@ -86,7 +86,7 @@ export function DashboardCards({ ds, baseDate, compareDate, onSelect }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
         <Card
           label="基金規模"
           value={fmtYi(d.day.nav_total)}
@@ -169,9 +169,22 @@ export function DashboardCards({ ds, baseDate, compareDate, onSelect }: Props) {
           }
         />
         <Card label="持股檔數" value={d.day.n_holdings} sub={`新進 ${d.newCount}／出清 ${d.exitCount}`} />
-        <Card label="當日換手率(估)" value={fmtPct(d.turnover * 100, 1)} sub="Σ|Δ持股市值|/規模" />
-        <Card label="前10大權重" value={fmtPct(d.top10Weight, 1)} />
-        <Card label="集中度 HHI" value={fmtInt(d.hhi)} sub="Σ權重²" />
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 space-y-2">
+          <div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">當日換手率(估)</div>
+            <div className="mt-1 text-lg font-semibold tabular-nums">{fmtPct(d.turnover * 100, 1)}</div>
+            <div className="text-xs text-gray-400 dark:text-gray-500">Σ|Δ持股市值|/規模</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">前10大權重</div>
+            <div className="text-base font-semibold tabular-nums">{fmtPct(d.top10Weight, 1)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">集中度 HHI</div>
+            <div className="text-base font-semibold tabular-nums">{fmtInt(d.hhi)}</div>
+            <div className="text-xs text-gray-400 dark:text-gray-500">Σ權重²</div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
