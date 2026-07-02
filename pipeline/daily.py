@@ -98,6 +98,11 @@ def main():
         except Exception as e:
             print(f"daily: notify skipped: {e}")
 
+    try:
+        backfill.write_last_updated()
+    except Exception as e:
+        print(f"daily: write_last_updated failed: {e}")
+
     # health signal for CI (does NOT block deploy; a post-deploy job alerts on it)
     failed = errs > 0
     if failed:

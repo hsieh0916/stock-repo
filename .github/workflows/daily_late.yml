@@ -34,7 +34,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/ web/public/dataset.json web/public/dataset_00981A.json web/public/dataset_00982A.json web/public/dataset_00980A.json web/public/dataset_00988A.json web/public/dataset_00990A.json web/public/dataset_00994A.json web/public/sectors.json web/public/prices.json
+          git add data/ web/public/dataset.json web/public/dataset_00981A.json web/public/dataset_00982A.json web/public/dataset_00980A.json web/public/dataset_00988A.json web/public/dataset_00990A.json web/public/dataset_00994A.json web/public/sectors.json web/public/prices.json web/public/last_updated.json
           if git diff --cached --quiet; then
             echo "no new data"
           else

@@ -194,6 +194,17 @@ def _build_one_dataset(snap_dir, fund_code, fund_name, out_filename):
     return dataset
 
 
+def write_last_updated():
+    """Write last_updated.json with current UTC timestamp to both public dirs."""
+    payload = json.dumps({"at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")},
+                         separators=(",", ":"))
+    for d in (PUB_DIR, WEB_PUB_DIR):
+        if os.path.isdir(d):
+            with open(os.path.join(d, "last_updated.json"), "w", encoding="utf-8") as f:
+                f.write(payload)
+    print(f"last_updated: {payload}")
+
+
 def build_dataset():
     return _build_one_dataset(
         SNAP_DIR, "00991A", "復華台灣未來50主動式ETF", "dataset.json"

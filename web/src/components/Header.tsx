@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Dataset } from '../data/types'
+import { useLastUpdated } from '../data/useLastUpdated'
 
 const ETF_GROUPS: { label: string; etfs: Record<string, string> }[] = [
   {
@@ -39,6 +40,7 @@ interface Props {
 
 export function Header({ ds, dark, onToggleDark, etf, onSetEtf, refreshing, onRefresh }: Props) {
   const [triggerStatus, setTriggerStatus] = useState<TriggerStatus>('idle')
+  const lastUpdated = useLastUpdated()
   const [tokenInput, setTokenInput] = useState('')
   const [errMsg, setErrMsg] = useState('')
 
@@ -121,6 +123,7 @@ export function Header({ ds, dark, onToggleDark, etf, onSetEtf, refreshing, onRe
         <span className="text-sm text-gray-600 dark:text-gray-400">{ds.fund.name}</span>
         <span className="ml-auto text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">
           資料 {ds.generated_dates.first} ~ {ds.generated_dates.last}（{ds.generated_dates.count} 交易日）
+          {lastUpdated && <span className="ml-2 text-gray-400 dark:text-gray-500">｜最後更新 {lastUpdated}</span>}
         </span>
 
         {/* CI trigger button */}
