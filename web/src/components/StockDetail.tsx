@@ -177,8 +177,7 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
                     <tr className="text-left text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
                       <th className="px-2 py-1.5 font-medium">ETF</th>
                       <th className="px-2 py-1.5 font-medium">名稱</th>
-                      <th className="px-2 py-1.5 font-medium text-right">持股(張)</th>
-                      <th className="px-2 py-1.5 font-medium text-right">當日增減</th>
+                      <th className="px-2 py-1.5 font-medium text-right">增減(張)</th>
                       <th className="px-2 py-1.5 font-medium text-right">權重</th>
                     </tr>
                   </thead>
@@ -197,9 +196,6 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
                           </td>
                           <td className={`px-2 py-1.5 text-xs ${held ? '' : dim}`}>
                             {r.etfName}
-                          </td>
-                          <td className={`px-2 py-1.5 text-right tabular-nums ${held ? '' : dim}`}>
-                            {r.lots != null ? fmtLots(r.lots) : '—'}
                           </td>
                           <td className={`px-2 py-1.5 text-right tabular-nums ${r.dLots != null && r.dLots !== 0 ? upDown(r.dLots) : dim}`}>
                             {r.dLots != null && r.dLots !== 0 ? fmtSignedLots(r.dLots) : '—'}
