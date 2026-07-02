@@ -3,6 +3,7 @@ import { Chart } from './Chart'
 import type { Dataset } from '../data/types'
 import { stockSeries, stockSummary } from '../data/analytics'
 import { usePrices } from '../data/usePrices'
+import { useAllEtfWeights } from '../data/useAllEtfWeights'
 import { fmtInt, fmtLots, fmtPct, fmtSignedLots, upDown } from '../lib/format'
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
 export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose }: Props) {
   const name = ds.securities[code] ?? code
   const marketPrices = usePrices()
+  const etfWeights = useAllEtfWeights(code)
   const full = useMemo(() => stockSeries(ds, code), [ds, code])
   const summary = useMemo(() => stockSummary(full), [full])
 
@@ -164,6 +166,50 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
               valueCls={unrealizedPct != null ? upDown(unrealizedPct) : undefined}
             />
           </div>
+
+          <Panel title="七大主動 ETF 持股概況">
+            {etfWeights.length === 0 ? (
+              <div className="text-xs text-gray-400 py-2">載入中…</div>
+            ) : (
+              <div className="overflow-x-auto thin-scroll">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                      <th className="px-2 py-1.5 font-medium">ETF</th>
+                      <th className="px-2 py-1.5 font-medium">名稱</th>
+                      <th className="px-2 py-1.5 font-medium text-right">持股(張)</th>
+                      <th className="px-2 py-1.5 font-medium text-right">權重</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {etfWeights.map((r) => {
+                      const isCurrent = r.etfCode === ds.fund.code
+                      const held = r.weight != null && r.weight > 0
+                      return (
+                        <tr
+                          key={r.etfCode}
+                          className={`border-b border-gray-50 dark:border-gray-800/60 ${isCurrent ? 'bg-indigo-50 dark:bg-indigo-950/30' : ''}`}
+                        >
+                          <td className={`px-2 py-1.5 font-mono text-xs ${held ? '' : 'text-gray-400 dark:text-gray-600'}`}>
+                            {r.etfCode}
+                          </td>
+                          <td className={`px-2 py-1.5 text-xs ${held ? '' : 'text-gray-400 dark:text-gray-600'}`}>
+                            {r.etfName}
+                          </td>
+                          <td className={`px-2 py-1.5 text-right tabular-nums ${held ? '' : 'text-gray-400 dark:text-gray-600'}`}>
+                            {r.lots != null ? fmtLots(r.lots) : '—'}
+                          </td>
+                          <td className={`px-2 py-1.5 text-right tabular-nums font-medium ${held ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-600'}`}>
+                            {r.weight != null ? fmtPct(r.weight) : '—'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
 
           <Panel title="持股張數走勢 ＆ 權重 ＆ 股價">
             <Chart option={lotsOption} style={{ height: 280 }} notMerge />
