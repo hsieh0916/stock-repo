@@ -74,6 +74,15 @@ def main():
     except Exception as e:
         print(f"daily: 00990A build_dataset failed: {e}")
     try:
+        errs += backfill.backfill_00994a()
+    except Exception as e:
+        print(f"daily: 00994A backfill failed: {e}")
+        errs += 1
+    try:
+        backfill.build_dataset_00994a()
+    except Exception as e:
+        print(f"daily: 00994A build_dataset failed: {e}")
+    try:
         sectors.build()
     except Exception as e:
         print("daily: sectors refresh skipped:", e)

@@ -22,6 +22,7 @@ const ETF_DATASETS: Record<string, string> = {
   '00980A': 'dataset_00980A.json',
   '00988A': 'dataset_00988A.json',
   '00990A': 'dataset_00990A.json',
+  '00994A': 'dataset_00994A.json',
 }
 
 const ETF_SOURCES: Record<string, string> = {
@@ -31,6 +32,7 @@ const ETF_SOURCES: Record<string, string> = {
   '00980A': '野村投信官網每日持股揭露（00980A）',
   '00988A': '統一投信 ezmoney.com.tw 每日持股揭露（00988A）',
   '00990A': '元大投信 yuantaetfs.com 每日持股揭露（00990A）',
+  '00994A': '第一金投信官網每日持股揭露（00994A）',
 }
 
 function useDark(): [boolean, () => void] {

@@ -17,6 +17,7 @@ import urllib.error
 
 import capital_etf
 import fhetf
+import fsitc_etf
 import nomura_etf
 import upamc_etf
 import upamc_global_etf
@@ -30,6 +31,7 @@ SNAP_DIR_00982A = os.path.join(ROOT, "data", "snapshots", "00982A")
 SNAP_DIR_00980A = os.path.join(ROOT, "data", "snapshots", "00980A")
 SNAP_DIR_00988A = os.path.join(ROOT, "data", "snapshots", "00988A")
 SNAP_DIR_00990A = os.path.join(ROOT, "data", "snapshots", "00990A")
+SNAP_DIR_00994A = os.path.join(ROOT, "data", "snapshots", "00994A")
 PUB_DIR = os.path.join(ROOT, "data", "public")
 WEB_PUB_DIR = os.path.join(ROOT, "web", "public")
 
@@ -39,6 +41,7 @@ START_00982A = datetime.date(2025, 5, 22)  # 00982A listing date
 START_00980A = datetime.date(2025, 5, 5)   # 00980A listing date
 START_00988A = datetime.date(2025, 11, 1)  # 00988A first PCF ~2025-11-05 (T+2 publish)
 START_00990A = datetime.date(2026, 1, 2)   # 00990A first available date
+START_00994A = datetime.date(2026, 1, 7)   # 00994A listing date
 END = datetime.date.today()
 RECENT_CUTOFF = END - datetime.timedelta(days=7)  # re-fetch & compare within this window
 
@@ -374,6 +377,68 @@ def build_dataset_00990a():
     )
 
 
+def backfill_00994a():
+    """Fetch all missing 00994A trading days from inception to today. Returns error count.
+
+    fsitc API convention: requesting publication date d returns holdings for d-1 (T+0).
+    We iterate d from START+1 to END (publication dates), capturing d-1 data each time,
+    then also fetch the latest (None) to capture today's data after market close.
+    """
+    os.makedirs(SNAP_DIR_00994A, exist_ok=True)
+    got, updated, empty, errs = 0, 0, 0, 0
+    # Iterate publication dates from START+1 to END (weekdays)
+    pub_start = START_00994A + datetime.timedelta(days=1)
+    for d in daterange(pub_start, END):
+        # Approximate actual data date = d-1 (may be off by holiday, corrected after fetch)
+        approx_actual = d - datetime.timedelta(days=1)
+        approx_path = os.path.join(SNAP_DIR_00994A, f"{approx_actual.isoformat()}.json")
+        if os.path.exists(approx_path) and approx_actual < RECENT_CUTOFF:
+            got += 1
+            continue
+        try:
+            snap = fsitc_etf.fetch_parse(d.isoformat())
+        except Exception as e:
+            time.sleep(1.0)
+            try:
+                snap = fsitc_etf.fetch_parse(d.isoformat())
+            except Exception as e2:
+                print(f"  00994A ERR {d}: {e2}")
+                errs += 1
+                continue
+        if snap is None:
+            empty += 1
+        else:
+            actual_date = snap.get("date", approx_actual.isoformat())
+            actual_path = os.path.join(SNAP_DIR_00994A, f"{actual_date}.json")
+            if _snap_changed(actual_path, snap):
+                with open(actual_path, "w", encoding="utf-8") as f:
+                    json.dump(snap, f, ensure_ascii=False)
+                updated += 1
+            got += 1
+        time.sleep(0.3)
+    # Also fetch latest to capture today's data after market close
+    try:
+        snap = fsitc_etf.fetch_parse(None)
+        if snap:
+            actual_date = snap.get("date")
+            actual_path = os.path.join(SNAP_DIR_00994A, f"{actual_date}.json")
+            if _snap_changed(actual_path, snap):
+                with open(actual_path, "w", encoding="utf-8") as f:
+                    json.dump(snap, f, ensure_ascii=False)
+                updated += 1
+                got += 1
+    except Exception as e:
+        print(f"  00994A latest fetch failed: {e}")
+    print(f"00994A backfill: {got} days saved/checked, {updated} updated, {empty} non-trading skipped, {errs} errors")
+    return errs
+
+
+def build_dataset_00994a():
+    return _build_one_dataset(
+        SNAP_DIR_00994A, "00994A", "主動第一金台股趨勢優選ETF", "dataset_00994A.json"
+    )
+
+
 if __name__ == "__main__":
     backfill()
     build_dataset()
@@ -387,3 +452,5 @@ if __name__ == "__main__":
     build_dataset_00988a()
     backfill_00990a()
     build_dataset_00990a()
+    backfill_00994a()
+    build_dataset_00994a()
