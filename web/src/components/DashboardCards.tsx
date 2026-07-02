@@ -5,6 +5,16 @@ import { fmtInt, fmtPct, fmtSignedPct, fmtSignedYi, fmtYi, upDown } from '../lib
 import { usePrices } from '../data/usePrices'
 import { useEtfPrice } from '../data/useEtfPrice'
 
+const INAV_URL: Record<string, string> = {
+  '00991A': 'https://www.fhtrust.com.tw/ETF/etf_data_value',
+  '00981A': 'https://www.ezmoney.com.tw/',
+  '00982A': 'https://www.capitalfund.com.tw/etf',
+  '00980A': 'https://www.nomurafunds.com.tw/',
+  '00988A': 'https://www.ezmoney.com.tw/',
+  '00990A': 'https://www.yuantaetfs.com/TradeInfo/INav',
+  '00994A': 'https://www.fsitc.com.tw/FundDetail.aspx?ID=182',
+}
+
 function Card({
   label,
   value,
@@ -141,9 +151,21 @@ export function DashboardCards({ ds, baseDate, compareDate, onSelect }: Props) {
             </span>
           ) : undefined}
           detail={
-            <span className="text-gray-400 dark:text-gray-500">
-              {isRealtime ? `即時 ${updatedAt}` : '收盤'}
-            </span>
+            <>
+              <span className="text-gray-400 dark:text-gray-500">
+                {isRealtime ? `即時 ${updatedAt}` : '收盤'}
+              </span>
+              {INAV_URL[ds.fund.code] && (
+                <a
+                  href={INAV_URL[ds.fund.code]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-500 hover:text-indigo-400 hover:underline"
+                >
+                  預估淨值 ↗
+                </a>
+              )}
+            </>
           }
         />
         <Card label="持股檔數" value={d.day.n_holdings} sub={`新進 ${d.newCount}／出清 ${d.exitCount}`} />
