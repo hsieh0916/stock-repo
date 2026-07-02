@@ -396,8 +396,8 @@ def backfill_00990a():
     os.makedirs(SNAP_DIR_00990A, exist_ok=True)
     got, updated, empty, errs = 0, 0, 0, 0
     for d in daterange(START_00990A, END):
-        actual_path = os.path.join(SNAP_DIR_00990A, f"{d.isoformat()}.json")
-        if os.path.exists(actual_path) and d < RECENT_CUTOFF:
+        check_path = os.path.join(SNAP_DIR_00990A, f"{d.isoformat()}.json")
+        if os.path.exists(check_path) and d < RECENT_CUTOFF:
             got += 1
             continue
         try:
@@ -413,6 +413,9 @@ def backfill_00990a():
         if snap is None:
             empty += 1
         else:
+            # Use snap['date'] (data date) as filename, not the query date
+            actual_date = snap.get("date", d.isoformat())
+            actual_path = os.path.join(SNAP_DIR_00990A, f"{actual_date}.json")
             if _snap_changed(actual_path, snap):
                 with open(actual_path, "w", encoding="utf-8") as f:
                     json.dump(snap, f, ensure_ascii=False)
