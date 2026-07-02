@@ -11,7 +11,7 @@ const INAV_URL: Record<string, string> = {
   '00982A': 'https://www.capitalfund.com.tw/etf',
   '00980A': 'https://www.nomurafunds.com.tw/',
   '00988A': 'https://www.ezmoney.com.tw/ETF/Transaction/Estimate?agree=y',
-  '00990A': 'https://www.yuantaetfs.com/TradeInfo/INav',
+  '00990A': 'https://www.yuantaetfs.com/tradeInfo/comparison/00990A/NAVhistory',
   '00994A': 'https://www.fsitc.com.tw/FundDetail.aspx?ID=182',
 }
 
