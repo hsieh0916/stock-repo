@@ -9,7 +9,7 @@ const INAV_URL: Record<string, string> = {
   '00991A': 'https://www.fhtrust.com.tw/ETF/etf_data_value',
   '00981A': 'https://www.ezmoney.com.tw/ETF/Transaction/Estimate?agree=y',
   '00982A': 'https://www.capitalfund.com.tw/etf',
-  '00980A': 'https://www.nomurafunds.com.tw/ETFWEB/inav',
+  '00980A': 'https://www.nomurafunds.com.tw/',
   '00988A': 'https://www.ezmoney.com.tw/ETF/Transaction/Estimate?agree=y',
   '00990A': 'https://www.yuantaetfs.com/tradeInfo/comparison/00990A/NAVhistory',
   '00994A': 'https://www.fsitc.com.tw/FundDetail.aspx?ID=182',
