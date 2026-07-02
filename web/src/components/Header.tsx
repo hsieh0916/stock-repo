@@ -9,6 +9,7 @@ const ETF_GROUPS: { label: string; etfs: Record<string, string> }[] = [
       '00981A': '主動統一台股增長',
       '00982A': '主動群益台灣強棒',
       '00980A': '主動野村臺灣優選',
+      '00994A': '主動第一金台股趨勢優選',
     },
   },
   {

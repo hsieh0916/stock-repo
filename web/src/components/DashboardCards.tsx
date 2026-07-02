@@ -119,6 +119,8 @@ export function DashboardCards({ ds, baseDate, compareDate, onSelect }: Props) {
             <>
               <MaRow label="月線" nav={nav} ma={d.ma20} />
               <MaRow label="季線" nav={nav} ma={d.ma60} />
+              <MaRow label="年線" nav={nav} ma={d.ma240} />
+              <MaRow label="近高" nav={nav} ma={d.recentHigh} />
             </>
           }
         />

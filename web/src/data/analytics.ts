@@ -103,6 +103,8 @@ export interface Dashboard {
   monthNavTotal: number | null // ~20 trading days ago
   ma20: number | null // 月線: 20-day MA of nav_per_unit
   ma60: number | null // 季線: 60-day MA of nav_per_unit
+  ma240: number | null // 年線: 240-day MA of nav_per_unit
+  recentHigh: number | null // 近期高點: max nav_per_unit in last 240 trading days
   newCount: number
   exitCount: number
   changedCount: number // |dShares|>0
@@ -146,6 +148,10 @@ export function dashboard(
     monthNavTotal: monthDay?.nav_total ?? null,
     ma20: compareIdx >= 0 ? mavg(ds.fund_series, compareIdx, 20) : null,
     ma60: compareIdx >= 0 ? mavg(ds.fund_series, compareIdx, 60) : null,
+    ma240: compareIdx >= 0 ? mavg(ds.fund_series, compareIdx, 240) : null,
+    recentHigh: compareIdx >= 0
+      ? Math.max(...ds.fund_series.slice(Math.max(0, compareIdx - 239), compareIdx + 1).map((d) => d.nav_per_unit))
+      : null,
     newCount: rows.filter((r) => r.tag === 'new').length,
     exitCount: rows.filter((r) => r.tag === 'exit').length,
     changedCount: rows.filter((r) => r.dShares !== 0).length,
