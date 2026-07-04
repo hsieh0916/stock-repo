@@ -69,6 +69,9 @@ jobs:
 
   deploy:
     needs: build
+    concurrency:
+      group: github-pages
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     environment:
       name: github-pages
