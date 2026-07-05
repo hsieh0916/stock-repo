@@ -1,6 +1,7 @@
 # 主動ETF持股雷達 — 工程交接文件
 
 > 最後更新：2026-07-05　作者：Claude Sonnet 4.6（協助 hsieh2070@gmail.com）
+> 2026-07-05 補充查證：Claude Sonnet 5
 
 ---
 
@@ -181,12 +182,38 @@ python -c "import upamc_etf; import json; print(json.dumps(upamc_etf.fetch_parse
 ## 八、待確認事項
 
 - [ ] 00982A（群益）、00990A（元大）的 INAV 外連結是否正確，待業主確認
-- [ ] GitHub Pages 部署在修正後需手動重新觸發一次（取消 stuck run → 觸發 workflow_dispatch）
-- [ ] 00988A 的 2026-07-01 & 07-02 快照待下次 CI 執行後補齊
+      > 2026-07-05 技術查證：兩連結皆 HTTP 200；`capitalfund.com.tw/etf` 頁面含「00982」「群益台灣強棒」「預估淨值」，`yuantaetfs.com/.../00990A/NAVhistory` 頁面含「00990」「INAV」，皆指向正確頁面。技術面無誤，仍待業主最終簽核後才勾除。
+- [x] GitHub Pages 部署在修正後已手動重新觸發（2026-07-05 查證：目前無 stuck/queued run；concurrency 修正 commit `fd10984` 之後，workflow_dispatch（07-04 23:37 UTC）與 push（07-04 23:56 UTC）兩次 run 皆 build+deploy 成功，線上 `last_updated.json` 已對齊最新資料 commit）
+- [x] 00988A 的 2026-07-01 & 07-02 快照已補齊（2026-07-05 查證：兩檔案皆存在於 `data/snapshots/00988A/`）
+- [ ] 00988A、00990A 的 2026-07-03 快照缺漏 — 已排查為**上游來源尚未發布**，非程式錯誤（詳見九-2）；預期來源補發布後，下次排程會自動回補，無需人工介入
 
 ---
 
-## 九、快速除錯
+## 九、2026-07-05 查證記錄
+
+### 1. CI 中斷時間窗（比原記錄更嚴重）
+
+用 GitHub Actions API（`gh api repos/.../actions/runs?created=...`）直接查證，發現 **2026-07-02T14:17:53Z 到 2026-07-04T16:32:45Z（約50小時）之間完全沒有任何 workflow run 被建立**——不是「觸發後失敗」，是排程本身沒有產生 run 紀錄，比原文件描述的「排程全部失敗」更嚴重。
+
+但同一時間窗內，git log 卻有 3 筆 `github-actions[bot]` 具名的資料 commit（2026-07-03T02:14 / 16:23 / 17:17 UTC），author/committer date 完全一致、找不到對應的 Actions run。研判是前一位工程師在 CI 中斷期間**手動於本機執行 pipeline 並以 bot 身分推送**回補資料，而非真正由 CI 產生。
+
+現況：concurrency 修正（`fd10984`，2026-07-05 00:37 台北時間）之後的所有 run 皆正常，此問題已解決，僅記錄存查，避免日後誤判「CI 有跑只是失敗」。
+
+### 2. 00988A、00990A 的 2026-07-03 快照缺漏 — 根因排查
+
+其餘 5 支 ETF 都在 2026-07-03（週五，交易日）正常產生快照，唯獨 00988A、00990A 沒有。逐項排查：
+
+- 確認 `backfill_00988a()` / `backfill_00990a()` 結尾都已有 `fetch_parse(None)` 的 T+1 補抓修正（程式碼無誤）
+- 確認 `RECENT_CUTOFF = END - 7 days`，兩者迴圈對近 7 天內的日期**每次都會強制重抓**，不會因為檔案已存在而跳過 → 回補機制健全
+- 直接對 `upamc_global_etf.fetch_parse()` 用多個日期探測，發現該來源對 00988A 有 **T+2 交易日發布延遲**（例：查詢 `2026-07-03` 實際拿到的是 `2026-07-01` 的資料）
+- 直接對 `yuanta_etf.fetch_parse('2026-07-03')` 探測，回傳 `None`（無 T+1/T+2 位移，是單純**尚未發布**）
+- 實際在本機執行完整的 `backfill_00988a()` / `backfill_00990a()`（非探測，是正式函式），兩者皆 0 errors 完成，但都沒有產生 `2026-07-03.json`
+
+**結論：這不是程式錯誤，是上游來源截至 2026-07-05（週日）當下尚未發布 07-03 的資料。** 因為 RECENT_CUTOFF 機制會讓近 7 天內的日期在每次排程都重新嘗試，一旦來源補發布，下次排程（最快 07-06 週一 18:30）會自動補上這兩個檔案，不需要人工介入。若 07-07 之後仍缺漏，才需要進一步排查來源是否異常。
+
+---
+
+## 十、快速除錯
 
 | 症狀 | 可能原因 | 排查方式 |
 |------|---------|---------|
@@ -195,3 +222,4 @@ python -c "import upamc_etf; import json; print(json.dumps(upamc_etf.fetch_parse
 | 市場價格顯示「收盤」 | Yahoo Finance CORS / 非交易時間 | 正常現象，非交易時段 fallback 到 prices.json |
 | `last_updated` 沒更新 | deploy 失敗（資料有更新但 deploy 卡住） | 同「頁面沒更新」 |
 | Snapshot `file ≠ snap.date` | 存盤用了查詢日期而非 snap["date"] | 確認存盤時使用 `snap.get("date", d.isoformat())` 當檔名 |
+| 特定 ETF 某天快照持續缺漏 | 上游來源發布延遲（T+1/T+2），非程式錯誤 | 用不同日期參數呼叫 `fetch_parse()` 探測；確認 `RECENT_CUTOFF` 內會自動重抓，通常下次排程自癒 |
