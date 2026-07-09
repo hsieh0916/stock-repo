@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Chart } from './Chart'
 import type { Dataset } from '../data/types'
 import { stockSeries, stockSummary } from '../data/analytics'
 import { usePrices } from '../data/usePrices'
-import { useAllEtfWeights } from '../data/useAllEtfWeights'
+import { useAllEtfWeights, ETF_FILES } from '../data/useAllEtfWeights'
+import { useEtfStockSeries } from '../data/useEtfStockSeries'
 import { fmtInt, fmtLots, fmtPct, fmtSignedLots, upDown } from '../lib/format'
 
 interface Props {
@@ -22,22 +23,35 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
   const full = useMemo(() => stockSeries(ds, code), [ds, code])
   const summary = useMemo(() => stockSummary(full), [full])
 
-  // trim leading days before first appearance for cleaner charts
-  const startIdx = summary.firstDate ? full.findIndex((p) => p.date === summary.firstDate) : 0
-  const series = full.slice(Math.max(0, startIdx))
+  // selected ETF for chart (default = current dashboard ETF)
+  const [selectedEtfCode, setSelectedEtfCode] = useState(ds.fund.code)
+  useEffect(() => { setSelectedEtfCode(ds.fund.code) }, [code, ds.fund.code])
+  const isCurrentEtf = selectedEtfCode === ds.fund.code
+  const selectedEtfName = ETF_FILES.find(([c]) => c === selectedEtfCode)?.[2] ?? selectedEtfCode
+
+  // load series for selected ETF (cached; instant if same ETF was already loaded)
+  const selectedEtfRawSeries = useEtfStockSeries(selectedEtfCode, code)
+
+  // activeSeries: use local `full` when current ETF (sync), hook result otherwise
+  const activeSeries = useMemo(() => {
+    const raw = isCurrentEtf ? full : selectedEtfRawSeries
+    if (!raw.length) return []
+    const fi = raw.findIndex((p) => p.shares > 0)
+    return fi < 0 ? [] : raw.slice(fi)
+  }, [isCurrentEtf, full, selectedEtfRawSeries])
 
   const axis = dark ? '#9ca3af' : '#6b7280'
   const split = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
-  const dates = series.map((p) => p.date)
+  const dates = activeSeries.map((p) => p.date)
 
-  const prices = series.map((p) => (p.shares > 0 ? p.amount : null))
+  const prices = activeSeries.map((p) => (p.shares > 0 ? p.amount : null))
 
   // average cost basis: resets on exit, increases on buy (weighted avg), unchanged on sell
   const costBasis = useMemo(() => {
     const out: (number | null)[] = []
     let cost = 0
     let prevShares = 0
-    for (const p of series) {
+    for (const p of activeSeries) {
       if (p.shares === 0) {
         cost = 0; prevShares = 0; out.push(null)
       } else {
@@ -52,7 +66,7 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
       }
     }
     return out
-  }, [series])
+  }, [activeSeries])
 
   const estimatedPrice = prices[prices.length - 1]           // amount/shares from PCF
   const twsePrice = marketPrices[code] ?? null               // TWSE/TPEX actual close
@@ -72,8 +86,8 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
     ],
     dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 18 }],
     series: [
-      { name: '持股(張)', type: 'line', smooth: true, showSymbol: false, data: series.map((p) => Math.round(p.lots)), areaStyle: { opacity: 0.08 }, lineStyle: { color: '#6366f1' }, itemStyle: { color: '#6366f1' } },
-      { name: '權重(%)', type: 'line', yAxisIndex: 1, showSymbol: false, data: series.map((p) => p.weight), lineStyle: { color: '#f59e0b' }, itemStyle: { color: '#f59e0b' } },
+      { name: '持股(張)', type: 'line', smooth: true, showSymbol: false, data: activeSeries.map((p) => Math.round(p.lots)), areaStyle: { opacity: 0.08 }, lineStyle: { color: '#6366f1' }, itemStyle: { color: '#6366f1' } },
+      { name: '權重(%)', type: 'line', yAxisIndex: 1, showSymbol: false, data: activeSeries.map((p) => p.weight), lineStyle: { color: '#f59e0b' }, itemStyle: { color: '#f59e0b' } },
       { name: '股價(元)', type: 'line', yAxisIndex: 2, showSymbol: false, data: prices, lineStyle: { color: '#10b981', width: 1.5 }, itemStyle: { color: '#10b981' } },
       { name: '持有成本(元)', type: 'line', yAxisIndex: 2, showSymbol: false, data: costBasis, lineStyle: { color: '#f97316', width: 1.5, type: 'dashed' }, itemStyle: { color: '#f97316' } },
     ],
@@ -88,7 +102,7 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
     series: [
       {
         type: 'bar',
-        data: series.map((p) => ({
+        data: activeSeries.map((p) => ({
           value: Math.round(p.dLots),
           itemStyle: { color: p.dLots >= 0 ? '#e11d48' : '#059669' },
         })),
@@ -96,16 +110,16 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
     ],
   }
 
-  const recent = [...series].reverse().slice(0, 20)
+  const recent = [...activeSeries].reverse().slice(0, 20)
 
   function exportCsv() {
     const header = ['日期', '股數', '張數', 'Δ股數', 'Δ張數', '權重%', '購入金額(元)', '持有成本(元)']
-    const lines = series.map((p, i) => [p.date, p.shares, Math.round(p.lots), p.dShares, p.dLots, p.weight, prices[i] ?? '', costBasis[i] ?? ''].join(','))
+    const lines = activeSeries.map((p, i) => [p.date, p.shares, Math.round(p.lots), p.dShares, p.dLots, p.weight, prices[i] ?? '', costBasis[i] ?? ''].join(','))
     const csv = '﻿' + [header.join(','), ...lines].join('\n')
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
     const a = document.createElement('a')
     a.href = url
-    a.download = `00991A_${code}_${name}_持股歷史.csv`
+    a.download = `${selectedEtfCode}_${code}_${name}_持股歷史.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -167,7 +181,7 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
             />
           </div>
 
-          <Panel title="七大主動 ETF 持股概況">
+          <Panel title="七大主動 ETF 持股概況" action={<span className="text-xs text-gray-400 dark:text-gray-500">點選列切換下方圖表</span>}>
             {etfWeights.length === 0 ? (
               <div className="text-xs text-gray-400 py-2">載入中…</div>
             ) : (
@@ -183,15 +197,24 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
                   </thead>
                   <tbody>
                     {etfWeights.map((r) => {
-                      const isCurrent = r.etfCode === ds.fund.code
+                      const isSelected = r.etfCode === selectedEtfCode
+                      const isDashboard = r.etfCode === ds.fund.code
                       const held = r.weight != null && r.weight > 0
                       const dim = 'text-gray-400 dark:text-gray-600'
                       return (
                         <tr
                           key={r.etfCode}
-                          className={`border-b border-gray-50 dark:border-gray-800/60 ${isCurrent ? 'bg-indigo-50 dark:bg-indigo-950/30' : ''}`}
+                          onClick={() => setSelectedEtfCode(r.etfCode)}
+                          className={`border-b border-gray-50 dark:border-gray-800/60 cursor-pointer transition-colors ${
+                            isSelected
+                              ? 'bg-indigo-100 dark:bg-indigo-900/40'
+                              : isDashboard
+                              ? 'bg-indigo-50/60 dark:bg-indigo-950/20 hover:bg-indigo-50 dark:hover:bg-indigo-950/40'
+                              : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                          }`}
                         >
                           <td className={`px-2 py-1.5 font-mono text-xs ${held ? '' : dim}`}>
+                            {isSelected && <span className="mr-1 text-indigo-500">▶</span>}
                             {r.etfCode}
                           </td>
                           <td className={`px-2 py-1.5 text-xs ${held ? '' : dim}`}>
@@ -212,20 +235,45 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
             )}
           </Panel>
 
-          <Panel title="持股張數走勢 ＆ 權重 ＆ 股價">
-            <Chart option={lotsOption} style={{ height: 280 }} notMerge />
+          <Panel
+            title="持股張數走勢 ＆ 權重 ＆ 股價"
+            action={!isCurrentEtf && (
+              <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                {selectedEtfCode} · {selectedEtfName}
+              </span>
+            )}
+          >
+            {!isCurrentEtf && activeSeries.length === 0 ? (
+              <div className="text-xs text-gray-400 py-10 text-center">載入中…</div>
+            ) : (
+              <Chart option={lotsOption} style={{ height: 280 }} notMerge />
+            )}
           </Panel>
 
-          <Panel title="每日買賣超（張）">
+          <Panel
+            title="每日買賣超（張）"
+            action={!isCurrentEtf && (
+              <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                {selectedEtfCode}
+              </span>
+            )}
+          >
             <Chart option={flowOption} style={{ height: 220 }} notMerge />
           </Panel>
 
           <Panel
             title="逐日明細（近 20 日）"
             action={
-              <button onClick={exportCsv} className="rounded-md bg-emerald-600 text-white px-2 py-0.5 text-xs hover:bg-emerald-700">
-                匯出全期 CSV
-              </button>
+              <div className="flex items-center gap-2">
+                {!isCurrentEtf && (
+                  <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                    {selectedEtfCode}
+                  </span>
+                )}
+                <button onClick={exportCsv} className="rounded-md bg-emerald-600 text-white px-2 py-0.5 text-xs hover:bg-emerald-700">
+                  匯出全期 CSV
+                </button>
+              </div>
             }
           >
             <div className="overflow-x-auto thin-scroll">

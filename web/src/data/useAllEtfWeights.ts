@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { Dataset, HoldingRow } from './types'
 
-const ETF_FILES: [string, string, string][] = [
+export const ETF_FILES: [string, string, string][] = [
   ['00991A', 'dataset.json',         '復華台灣未來50'],
   ['00981A', 'dataset_00981A.json',  '統一台股增長'],
   ['00982A', 'dataset_00982A.json',  '群益台灣強棒'],
@@ -25,7 +25,7 @@ export interface EtfWeightRow {
 // Module-level cache: one Promise<Dataset|null> per file, lives for the page session
 const _cache = new Map<string, Promise<Dataset | null>>()
 
-function loadDataset(file: string): Promise<Dataset | null> {
+export function loadDataset(file: string): Promise<Dataset | null> {
   if (!_cache.has(file)) {
     const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
     const url = `${import.meta.env.BASE_URL}${file}?v=${today}`
