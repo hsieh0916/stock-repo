@@ -36,6 +36,46 @@ function Card({
   )
 }
 
+const ALLOCATION_SEGMENTS = [
+  { key: 'stock', label: '股票', color: 'bg-[#2a78d6] dark:bg-[#3987e5]' },
+  { key: 'futures', label: '期貨', color: 'bg-[#eb6834] dark:bg-[#d95926]' },
+  { key: 'cash_other', label: '現金/其他', color: 'bg-[#1baf7a] dark:bg-[#199e70]' },
+] as const
+
+function AllocationCard({ allocation }: { allocation?: Dataset['fund_series'][number]['allocation'] }) {
+  if (!allocation) return null
+  const segments = ALLOCATION_SEGMENTS
+    .map((s) => ({ ...s, value: allocation[s.key] }))
+    .filter((s) => s.value > 0)
+
+  return (
+    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3">
+      <div className="text-xs text-gray-500 dark:text-gray-400">資產配置</div>
+      <div className="mt-2 flex h-3 w-full gap-[2px] overflow-hidden rounded-full">
+        {segments.map((s) => (
+          <div
+            key={s.key}
+            title={`${s.label} ${s.value.toFixed(1)}%`}
+            className={`${s.color} first:rounded-l-full last:rounded-r-full`}
+            style={{ width: `${s.value}%` }}
+          />
+        ))}
+      </div>
+      <div className="mt-2 space-y-0.5 text-xs">
+        {segments.map((s) => (
+          <div key={s.key} className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+              <span className={`inline-block h-2 w-2 rounded-full ${s.color}`} />
+              {s.label}
+            </span>
+            <span className="font-medium tabular-nums">{s.value.toFixed(1)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function MaRow({ label, nav, ma }: { label: string; nav: number; ma: number | null }) {
   if (ma == null) return null
   const diff = nav - ma
@@ -86,7 +126,7 @@ export function DashboardCards({ ds, baseDate, compareDate, onSelect }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
         <Card
           label="基金規模"
           value={fmtYi(d.day.nav_total)}
@@ -169,6 +209,7 @@ export function DashboardCards({ ds, baseDate, compareDate, onSelect }: Props) {
           }
         />
         <Card label="持股檔數" value={d.day.n_holdings} sub={`新進 ${d.newCount}／出清 ${d.exitCount}`} />
+        <AllocationCard allocation={d.day.allocation} />
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 space-y-2">
           <div>
             <div className="text-xs text-gray-500 dark:text-gray-400">當日換手率(估)</div>

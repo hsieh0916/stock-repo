@@ -81,6 +81,20 @@ def fetch_parse(date_ymd=None, timeout=30):
 
     holdings.sort(key=lambda h: -(h.get("weight") or 0))
 
+    # `futures` entries' field names are unconfirmed (always empty so far);
+    # try the common weight-field spellings defensively and fold anything
+    # unrecognized into cash/other via the allocation residual below.
+    futures_weight = 0.0
+    for f in (data.get("futures") or []):
+        for key in ("weight", "navRate", "navRatio"):
+            if f.get(key) is not None:
+                futures_weight += float(f[key])
+                break
+
+    stock_weight = round(sum(h["weight"] or 0 for h in holdings), 6)
+    futures_weight = round(futures_weight, 6)
+    cash_other_weight = round(max(0.0, 100 - stock_weight - futures_weight), 6)
+
     return {
         "date": date_str,
         "nav_total": nav_total,
@@ -88,6 +102,7 @@ def fetch_parse(date_ymd=None, timeout=30):
         "nav_per_unit": nav_per_unit,
         "n_holdings": len(holdings),
         "holdings": holdings,
+        "allocation": {"stock": stock_weight, "futures": futures_weight, "cash_other": cash_other_weight},
     }
 
 

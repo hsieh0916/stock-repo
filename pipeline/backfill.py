@@ -48,14 +48,17 @@ RECENT_CUTOFF = END - datetime.timedelta(days=7)  # re-fetch & compare within th
 
 def _snap_changed(path, snap):
     """Return True if snap differs from saved file (or file missing).
-    Compares nav_total and nav_per_unit to detect official-site corrections."""
+    Compares nav_total and nav_per_unit to detect official-site corrections,
+    and also refreshes if the saved file predates a newly-added field like
+    "allocation" so recent days pick it up without waiting for a NAV change."""
     if not os.path.exists(path):
         return True
     try:
         with open(path, encoding="utf-8") as f:
             old = json.load(f)
         return (old.get("nav_total") != snap.get("nav_total") or
-                old.get("nav_per_unit") != snap.get("nav_per_unit"))
+                old.get("nav_per_unit") != snap.get("nav_per_unit") or
+                ("allocation" not in old and "allocation" in snap))
     except Exception:
         return True
 
@@ -178,6 +181,7 @@ def _build_one_dataset(snap_dir, fund_code, fund_name, out_filename):
                 "units": s["units"],
                 "nav_per_unit": s["nav_per_unit"],
                 "n_holdings": s["n_holdings"],
+                "allocation": s.get("allocation"),
             }
         )
         rows = []

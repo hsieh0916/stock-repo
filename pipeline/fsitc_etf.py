@@ -113,6 +113,12 @@ def fetch_parse(pub_date_ymd=None, timeout=30):
 
     holdings.sort(key=lambda h: -(h.get("weight") or 0))
 
+    # Source bundles cash and derivatives into one "其他+衍生" figure (no way
+    # to split out futures specifically), so everything non-stock folds into
+    # cash/other via the allocation residual.
+    stock_weight = round(sum(h["weight"] or 0 for h in holdings), 6)
+    cash_other_weight = round(max(0.0, 100 - stock_weight), 6)
+
     return {
         "date": actual_date,
         "nav_total": nav_total,
@@ -120,6 +126,7 @@ def fetch_parse(pub_date_ymd=None, timeout=30):
         "nav_per_unit": nav_per_unit,
         "n_holdings": len(holdings),
         "holdings": holdings,
+        "allocation": {"stock": stock_weight, "futures": 0.0, "cash_other": cash_other_weight},
     }
 
 
