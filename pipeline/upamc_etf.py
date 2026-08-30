@@ -109,8 +109,15 @@ def parse(raw):
         return None
 
     holdings = []
+    futures_weight = 0.0
     for a in raw.get("asset", []):
         if a.get("AssetCode") != "ST":
+            # Non-stock asset group (e.g. GD = index futures margin account).
+            # A Detail with a contract month (MTH) is a futures position;
+            # anything else folds into cash/other via the allocation residual.
+            for d in a.get("Details") or []:
+                if d.get("MTH"):
+                    futures_weight += float(d.get("NavRate") or 0)
             continue
         for d in a.get("Details") or []:
             code = (d.get("DetailCode") or "").strip()
@@ -128,6 +135,10 @@ def parse(raw):
 
     holdings.sort(key=lambda h: -(h.get("weight") or 0))
 
+    stock_weight = round(sum(h["weight"] or 0 for h in holdings), 6)
+    futures_weight = round(futures_weight, 6)
+    cash_other_weight = round(max(0.0, 100 - stock_weight - futures_weight), 6)
+
     return {
         "date": post_date,
         "nav_total": nav_total,
@@ -135,6 +146,7 @@ def parse(raw):
         "nav_per_unit": nav_per_unit,
         "n_holdings": len(holdings),
         "holdings": holdings,
+        "allocation": {"stock": stock_weight, "futures": futures_weight, "cash_other": cash_other_weight},
     }
 
 

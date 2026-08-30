@@ -83,6 +83,12 @@ def parse(raw):
 
     holdings.sort(key=lambda h: -(h.get("weight") or 0))
 
+    summary = (raw.get("FundWeights") or {}).get("Summary") or {}
+    fundsize = float(summary.get("fundsize") or nav_total)
+    stock_weight = round(sum(h["weight"] or 0 for h in holdings), 6)
+    futures_weight = round(float(summary.get("futvalues") or 0) / fundsize * 100, 6) if fundsize else 0.0
+    cash_other_weight = round(max(0.0, 100 - stock_weight - futures_weight), 6)
+
     return {
         "date": date_str,
         "nav_total": nav_total,
@@ -90,6 +96,7 @@ def parse(raw):
         "nav_per_unit": nav_per_unit,
         "n_holdings": len(holdings),
         "holdings": holdings,
+        "allocation": {"stock": stock_weight, "futures": futures_weight, "cash_other": cash_other_weight},
     }
 
 

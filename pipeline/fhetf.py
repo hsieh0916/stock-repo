@@ -145,7 +145,13 @@ def parse(xlsx_bytes):
                     "weight": _to_pct(row.get(c_wt)),
                 }
             )
-    return {**meta, "n_holdings": len(holdings), "holdings": holdings}
+    # Source only publishes the stock holdings table (no cash/futures
+    # breakdown), so the non-stock residual can only be shown as one bucket.
+    stock_weight = round(sum(h["weight"] or 0 for h in holdings), 6)
+    cash_other_weight = round(max(0.0, 100 - stock_weight), 6)
+    allocation = {"stock": stock_weight, "futures": 0.0, "cash_other": cash_other_weight}
+
+    return {**meta, "n_holdings": len(holdings), "holdings": holdings, "allocation": allocation}
 
 
 def fetch_parse(date_yyyymmdd, timeout=30):
