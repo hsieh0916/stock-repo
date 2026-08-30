@@ -15,6 +15,20 @@ const INAV_URL: Record<string, string> = {
   '00994A': 'https://www.fsitc.com.tw/FundDetail.aspx?ID=182',
 }
 
+// Official PCF / holdings-disclosure page per fund (where the stock/futures/
+// cash split shown in the 資產配置 card is published). 00991A and 00982A have
+// no distinct PCF page discoverable on their sites, so they fall back to the
+// same investor page as INAV_URL.
+const SOURCE_URL: Record<string, string> = {
+  '00991A': 'https://www.fhtrust.com.tw/ETF/etf_data_value',
+  '00981A': 'https://www.ezmoney.com.tw/ETF/Transaction/PCF',
+  '00982A': 'https://www.capitalfund.com.tw/etf',
+  '00980A': 'https://www.nomurafunds.com.tw/ETFWEB/pcf',
+  '00988A': 'https://www.ezmoney.com.tw/ETF/Transaction/PCF',
+  '00990A': 'https://www.yuantaetfs.com/tradeInfo/pcf/00990A',
+  '00994A': 'https://www.fsitc.com.tw/FundDetail.aspx?ID=182',
+}
+
 function Card({
   label,
   value,
@@ -42,7 +56,13 @@ const ALLOCATION_SEGMENTS = [
   { key: 'cash_other', label: '現金/其他', color: 'bg-[#1baf7a] dark:bg-[#199e70]' },
 ] as const
 
-function AllocationCard({ allocation }: { allocation?: Dataset['fund_series'][number]['allocation'] }) {
+function AllocationCard({
+  fundCode,
+  allocation,
+}: {
+  fundCode: string
+  allocation?: Dataset['fund_series'][number]['allocation']
+}) {
   if (!allocation) return null
   const segments = ALLOCATION_SEGMENTS
     .map((s) => ({ ...s, value: allocation[s.key] }))
@@ -50,7 +70,19 @@ function AllocationCard({ allocation }: { allocation?: Dataset['fund_series'][nu
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3">
-      <div className="text-xs text-gray-500 dark:text-gray-400">資產配置</div>
+      <div className="flex items-center justify-between">
+        <div className="text-xs text-gray-500 dark:text-gray-400">資產配置</div>
+        {SOURCE_URL[fundCode] && (
+          <a
+            href={SOURCE_URL[fundCode]}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-indigo-500 hover:text-indigo-400 hover:underline"
+          >
+            資料來源 ↗
+          </a>
+        )}
+      </div>
       <div className="mt-2 flex h-3 w-full gap-[2px] overflow-hidden rounded-full">
         {segments.map((s) => (
           <div
@@ -209,7 +241,7 @@ export function DashboardCards({ ds, baseDate, compareDate, onSelect }: Props) {
           }
         />
         <Card label="持股檔數" value={d.day.n_holdings} sub={`新進 ${d.newCount}／出清 ${d.exitCount}`} />
-        <AllocationCard allocation={d.day.allocation} />
+        <AllocationCard fundCode={ds.fund.code} allocation={d.day.allocation} />
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 space-y-2">
           <div>
             <div className="text-xs text-gray-500 dark:text-gray-400">當日換手率(估)</div>
