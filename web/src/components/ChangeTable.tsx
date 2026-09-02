@@ -18,7 +18,7 @@ import {
   upDown,
 } from '../lib/format'
 
-type Mode = 'all' | 'up' | 'down' | 'new' | 'exit'
+type Mode = 'all' | 'up' | 'down' | 'new' | 'exit' | 'split'
 
 interface Props {
   ds: Dataset
@@ -35,6 +35,7 @@ const MODES: { key: Mode; label: string }[] = [
   { key: 'down', label: '減持' },
   { key: 'new', label: '新進' },
   { key: 'exit', label: '出清' },
+  { key: 'split', label: '除權調整' },
 ]
 
 const ch = createColumnHelper<ChangeRow>()
@@ -126,7 +127,7 @@ export function ChangeTable({ ds, baseDate, compareDate, onSelect, isWatched, on
 
   function exportCsv() {
     const header = ['代號', '名稱', '標記', '今日張數', 'Δ張數', '今日權重%', 'Δ權重%', 'Δ金額']
-    const tagText: Record<ChangeTag, string> = { new: '新進', exit: '出清', up: '增持', down: '減持', flat: '持平' }
+    const tagText: Record<ChangeTag, string> = { new: '新進', exit: '出清', up: '增持', down: '減持', flat: '持平', split: '除權調整' }
     const lines = table.getSortedRowModel().rows.map((r) => {
       const d = r.original
       return [d.code, d.name, tagText[d.tag], (d.shares / 1000).toFixed(0), d.dLots, d.weight, d.dWeight.toFixed(3), d.dAmount].join(',')
@@ -220,7 +221,7 @@ export function ChangeTable({ ds, baseDate, compareDate, onSelect, isWatched, on
       </div>
 
       <p className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">
-        ⚠️ 股數變化未必等於買賣，亦可能來自除權息／減資／股票分割等股本變動；大量申購會使多數個股同步增持，建議搭配「權重視角」判讀經理人意圖。1 張 = 1,000 股。
+        ⚠️ 股票股利／減資／分割等股本變動會自動偵測並標記「🔀 除權調整」，Δ張數已排除其影響；但偵測為經驗法則（股數與價格同步反向大幅變動、總市值不變），極端情況仍建議搭配「權重視角」交叉確認。大量申購會使多數個股同步增持。1 張 = 1,000 股。
       </p>
     </div>
   )

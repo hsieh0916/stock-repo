@@ -6,7 +6,51 @@ export interface Holding {
   weight: number
 }
 
-export type ChangeTag = 'new' | 'exit' | 'up' | 'down' | 'flat'
+export type ChangeTag = 'new' | 'exit' | 'up' | 'down' | 'flat' | 'split'
+
+export interface SplitInfo {
+  priceRatio: number // price_now / price_prev (e.g. ~0.33 for a ~3-for-1 stock dividend)
+}
+
+/**
+ * Detects a stock split / stock dividend (股票股利、減資、分割) between two
+ * consecutive per-share prices. Such an event moves shares and price in
+ * near-exact inverse proportion while total value stays flat — a signature
+ * that plain trading can't produce (a real buy/sell moves shares without an
+ * offsetting price move) — so it separates corporate actions from genuine
+ * buy/sell activity without needing an external corporate-actions feed.
+ * Thresholds: >20% move in both shares and price, but <15% move in their
+ * product (the value ratio), to avoid firing on an ordinary large trade that
+ * happens to coincide with a big single-day price move.
+ */
+export function detectSplit(
+  prevShares: number,
+  prevPrice: number,
+  shares: number,
+  price: number,
+): SplitInfo | null {
+  if (prevShares <= 0 || prevPrice <= 0 || shares <= 0 || price <= 0) return null
+  const shareRatio = shares / prevShares
+  const priceRatio = price / prevPrice
+  const valueRatio = shareRatio * priceRatio
+  const looksLikeSplit =
+    Math.abs(shareRatio - 1) > 0.2 &&
+    Math.abs(priceRatio - 1) > 0.2 &&
+    Math.abs(valueRatio - 1) < 0.15
+  return looksLikeSplit ? { priceRatio } : null
+}
+
+/** Share delta adjusted for a detected split (rescales prevShares onto the post-event basis). */
+export function splitAdjustedDShares(
+  prevShares: number,
+  prevPrice: number,
+  shares: number,
+  price: number,
+): { dShares: number; split: SplitInfo | null } {
+  const split = detectSplit(prevShares, prevPrice, shares, price)
+  const adjustedPrevShares = split ? prevShares / split.priceRatio : prevShares
+  return { dShares: shares - adjustedPrevShares, split }
+}
 
 export interface ChangeRow {
   code: string
@@ -60,14 +104,15 @@ export function diffRows(
     const c = cur.get(code)
     const shares = c?.shares ?? 0
     const prevShares = b?.shares ?? 0
-    const dShares = shares - prevShares
     const weight = c?.weight ?? 0
     const prevWeight = b?.weight ?? 0
     const amount = c?.amount ?? 0
     const price = shares > 0 ? amount : (prevShares > 0 ? (b?.amount ?? 0) : 0)
+    const { dShares, split } = splitAdjustedDShares(prevShares, b?.amount ?? 0, shares, amount)
     let tag: ChangeTag
     if (!b && c) tag = 'new'
     else if (b && !c) tag = 'exit'
+    else if (split) tag = 'split'
     else if (dShares > 0) tag = 'up'
     else if (dShares < 0) tag = 'down'
     else tag = 'flat'
@@ -238,20 +283,24 @@ export function stockSeries(ds: Dataset, code: string): StockPoint[] {
   const dates = tradingDates(ds)
   const out: StockPoint[] = []
   let prev = 0
+  let prevAmount = 0
   for (const date of dates) {
     const rows = ds.holdings_by_date[date] || []
     const r = rows.find((x) => x[0] === code)
     const shares = r ? r[1] : 0
+    const amount = r ? r[2] : 0
+    const { dShares } = splitAdjustedDShares(prev, prevAmount, shares, amount)
     out.push({
       date,
       shares,
       lots: shares / 1000,
       weight: r ? r[3] : 0,
-      amount: r ? r[2] : 0,
-      dShares: shares - prev,
-      dLots: (shares - prev) / 1000,
+      amount,
+      dShares,
+      dLots: dShares / 1000,
     })
     prev = shares
+    prevAmount = amount
   }
   return out
 }

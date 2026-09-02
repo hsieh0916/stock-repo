@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { Dataset, HoldingRow } from './types'
+import { splitAdjustedDShares } from './analytics'
 
 export const ETF_FILES: [string, string, string][] = [
   ['00991A', 'dataset.json',         '復華台灣未來50'],
@@ -57,10 +58,15 @@ export function useAllEtfWeights(stockCode: string): EtfWeightRow[] {
         const prevH: HoldingRow[] = prevDay ? (ds!.holdings_by_date[prevDay.date] ?? []) : []
 
         const row = todayH.find((h) => h[0] === stockCode)
+        const prevRow = prevDay ? prevH.find((h) => h[0] === stockCode) : undefined
         const curShares = row ? row[1] : 0
+        const curPrice = row ? row[2] : 0
         const prevShares = prevDay ? findShares(prevH, stockCode) : null
+        const prevPrice = prevRow ? prevRow[2] : 0
 
-        const dShares = prevShares !== null ? curShares - prevShares : null
+        const dShares = prevShares !== null
+          ? splitAdjustedDShares(prevShares, prevPrice, curShares, curPrice).dShares
+          : null
 
         return {
           etfCode,

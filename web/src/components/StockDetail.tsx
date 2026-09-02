@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { Chart } from './Chart'
 import type { Dataset } from '../data/types'
-import { stockSeries, stockSummary } from '../data/analytics'
+import { detectSplit, stockSeries, stockSummary } from '../data/analytics'
 import { usePrices } from '../data/usePrices'
 import { useAllEtfWeights, ETF_FILES } from '../data/useAllEtfWeights'
 import { useEtfStockSeries } from '../data/useEtfStockSeries'
@@ -46,23 +46,30 @@ export function StockDetail({ ds, code, dark, isWatched, onToggleWatch, onClose 
 
   const prices = activeSeries.map((p) => (p.shares > 0 ? p.amount : null))
 
-  // average cost basis: resets on exit, increases on buy (weighted avg), unchanged on sell
+  // average cost basis: resets on exit, increases on buy (weighted avg), unchanged on sell;
+  // rescaled (not blended with px) across a detected split/stock-dividend so the free bonus
+  // shares don't get counted as a purchase at the post-event price
   const costBasis = useMemo(() => {
     const out: (number | null)[] = []
     let cost = 0
     let prevShares = 0
+    let prevPrice = 0
     for (const p of activeSeries) {
       if (p.shares === 0) {
-        cost = 0; prevShares = 0; out.push(null)
+        cost = 0; prevShares = 0; prevPrice = 0; out.push(null)
       } else {
         const px = p.amount
+        const split = prevShares > 0 ? detectSplit(prevShares, prevPrice, p.shares, px) : null
         if (prevShares === 0) {
           cost = px
+        } else if (split) {
+          cost = cost * split.priceRatio
         } else if (p.shares > prevShares) {
           cost = (prevShares * cost + (p.shares - prevShares) * px) / p.shares
         }
         out.push(+cost.toFixed(2))
         prevShares = p.shares
+        prevPrice = px
       }
     }
     return out
