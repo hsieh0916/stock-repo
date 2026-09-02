@@ -6,6 +6,7 @@ const MAP: Record<ChangeTag, { label: string; cls: string }> = {
   up: { label: '▲ 增持', cls: 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300' },
   down: { label: '▼ 減持', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' },
   flat: { label: '— 持平', cls: 'bg-gray-100 text-gray-400 dark:bg-gray-700/30 dark:text-gray-500' },
+  split: { label: '🔀 除權調整', cls: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300' },
 }
 
 export function Badge({ tag }: { tag: ChangeTag }) {
